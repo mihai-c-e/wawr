@@ -1,0 +1,115 @@
+Abstract:
+In our opinion the exuberance surrounding the relative success of data-driven large language models (LLMs) is slightly misguided and for several reasons (i) LLMs cannot be relied upon for factual information since for LLMs all ingested text (factual or non-factual) was created equal; (ii) due to their subsymbolic na-ture, whatever 'knowledge' these models acquire about language will always be buried in billions of microfeatures (weights), none of which is meaningful on its own; and (iii) LLMs will often fail to make the correct inferences in several linguistic contexts (e.g., nominal compounds, copredication, quantifier scope ambi-guities, intensional contexts. Since we believe the relative success of data-driven large language models (LLMs) is not a reflection on the symbolic vs. subsymbol-ic debate but a reflection on applying the successful strategy of a bottom-up reverse engineering of language at scale, we suggest in this paper applying the effective bottom-up strategy in a symbolic setting resulting in symbolic, explainable, and ontologically grounded language models.
+Knowledge graph representation:
+[
+{"from":{"type":"feeling", "name":"exuberance surrounding data-driven large language model"}, "relation":{"name":"is", "summary":"In our opinion the exuberance surrounding the relative success of data-driven large language models (LLMs) is slightly misguided"}, "to":{"type":"opinion","name":"misguided"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"have", "summary":"the relative success of data-driven large language models (LLMs) is not a reflection on the symbolic vs. subsymbolic debate but a reflection on applying the successful strategy of a bottom-up reverse engineering of language at scale"}, "to":{"type":"concept","name":"success"}},
+
+{"from":{"type":"model", "name":"data-driven large language model with bottom-up reverse engineering"}, "relation":{"name":"is a", "summary":"Since we believe the relative success of data-driven large language models (LLMs) is not a reflection on the symbolic vs. subsymbol-ic debate but a reflection on applying the successful strategy of a bottom-up reverse engineering of language at scale, we suggest in this paper applying the effective bottom-up strategy in a symbolic setting resulting in symbolic, explainable, and ontologically grounded language models."}, "to":{"type":"model","name":"data-driven large language model"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"has low reliability", "summary":"LLMs cannot be relied upon for factual information since for LLMs all ingested text (factual or non-factual) was created equal"}, "to":{"type":"concept","name":"factual information"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"incomprehensible", "summary":"whatever 'knowledge' these models acquire about language will always be buried in billions of microfeatures (weights), none of which is meaningful on its own"}, "to":{"type":"concept","name":"knowledge"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"inference failure", "summary":"LLMs will often fail to make the correct inferences in several linguistic contexts (e.g., nominal compounds, copredication, quantifier scope ambiguities, intensional contexts)"}, "to":{"type":"concept","name":"nominal compounds"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"inference failure", "summary":"LLMs will often fail to make the correct inferences in several linguistic contexts (e.g., nominal compounds, copredication, quantifier scope ambiguities, intensional contexts)"}, "to":{"type":"concept","name":"copredication"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"inference failure", "summary":"LLMs will often fail to make the correct inferences in several linguistic contexts (e.g., nominal compounds, copredication, quantifier scope ambiguities, intensional contexts)"}, "to":{"type":"concept","name":"quantifier scope ambiguities"}},
+
+{"from":{"type":"model", "name":"data-driven large language model"}, "relation":{"name":"inference failure", "summary":"LLMs will often fail to make the correct inferences in several linguistic contexts (e.g., nominal compounds, copredication, quantifier scope ambiguities, intensional contexts)"}, "to":{"type":"concept","name":"intensional contexts"}},
+
+{"from":{"type":"model", "name":"language model with bottom-up reverse engineering"}, "relation":{"name":"achieve", "summary":"suggest in this paper applying the effective bottom-up strategy in a symbolic setting resulting in symbolic, explainable, and ontologically grounded language models"}, "to":{"type":"model","name":"explainable language model"}},
+
+{"from":{"type":"model", "name":"language model with bottom-up reverse engineering"}, "relation":{"name":"achieve", "summary":"suggest in this paper applying the effective bottom-up strategy in a symbolic setting resulting in symbolic, explainable, and ontologically grounded language models"}, "to":{"type":"model","name":"symbolic language models"}},
+
+{"from":{"type":"model", "name":"language model with bottom-up reverse engineering"}, "relation":{"name":"achieve", "summary":"suggest in this paper applying the effective bottom-up strategy in a symbolic setting resulting in symbolic, explainable, and ontologically grounded language models"}, "to":{"type":"model","name":"ontologically grounded language model"}}
+]
+
+
+Abstract:
+In recent studies, linear recurrent neural networks (LRNNs) have achieved Transformer-level performance in natural language modeling and long-range modeling while offering rapid parallel training and constant inference costs. With the resurged interest in LRNNs, we study whether they can learn the hidden rules in training sequences, such as the grammatical structures of regular language. We theoretically analyze some existing LRNNs and discover their limitations on regular language. Motivated by the analysis, we propose a new LRNN equipped with a block-diagonal and input-dependent transition matrix. Experiments suggest that the proposed model is the only LRNN that can perform length extrapolation on regular language tasks such as Sum, Even Pair, and Modular Arithmetic.
+Knowledge graph representation:
+[
+{"from":{"type":"model", "name":"linear recurrent neural network"}, "relation":{"name":"achieve performance", "summary":"In recent studies, linear recurrent neural networks (LRNNs) have achieved Transformer-level performance in natural language modeling and long-range modeling"}, "to":{"type":"model","name":"transformer"}},
+
+{"from":{"type":"model", "name":"linear recurrent neural network"}, "relation":{"name":"achieve performance", "summary":"In recent studies, linear recurrent neural networks (LRNNs) have achieved Transformer-level performance in natural language modeling and long-range modeling"}, "to":{"type":"measure","name":"inference cost"}},
+
+{"from":{"type":"model", "name":"linear recurrent neural network"}, "relation":{"name":"achieve performance", "summary":"In recent studies, linear recurrent neural networks (LRNNs) have achieved Transformer-level performance in natural language modeling and long-range modeling"}, "to":{"type":"measure","name":"model training speed"}},
+
+{"from":{"type":"model", "name":"linear recurrent neural network"}, "relation":{"name":"higher", "summary":"With the resurged interest in LRNNs"}, "to":{"type":"measure","name":"interest"}},
+
+{"from":{"type":"model", "name":"linear recurrent neural network with block-diagonal and input-dependent transition matrix"}, "relation":{"name":"is a", "summary":"we propose a new LRNN equipped with a block-diagonal and input-dependent transition matrix"}, "to":{"type":"model","name":"linear recurrent neural network"}},
+
+{"from":{"type":"model", "name":"linear recurrent neural network with block-diagonal and input-dependent transition matrix"}, "relation":{"name":"is a", "summary":"we propose a new LRNN equipped with a block-diagonal and input-dependent transition matrix"}, "to":{"type":"model","name":"linear recurrent neural network"}},
+
+{"from":{"type":"model", "name":"linear recurrent neural network with block-diagonal and input-dependent transition matrix"}, "relation":{"name":"outperform", "summary":"Experiments suggest that the proposed model is the only LRNN that can perform length extrapolation on regular language tasks such as Sum, Even Pair, and Modular Arithmetic."}, "to":{"type":"model","name":"linear recurrent neural network"}}
+]
+
+
+Abstract:
+Embodied AI is a crucial frontier in robotics, capable of planning and executing action sequences for robots to accomplish long-horizon tasks in physical environments. In this work, we introduce EmbodiedGPT, an end-to-end multi-modal foundation model for embodied AI, empowering embodied agents with multi-modal understanding and execution capabilities. To achieve this, we have made the following efforts: (i) We craft a large-scale embodied planning dataset, termed EgoCOT. The dataset consists of carefully selected videos from the Ego4D dataset, along with corresponding high-quality language instructions. Specifically, we generate a sequence of sub-goals with the "Chain of Thoughts" mode for effective embodied planning. (ii) We introduce an efficient training approach to EmbodiedGPT for high-quality plan generation, by adapting a 7B large language model (LLM) to the EgoCOT dataset via prefix tuning. (iii) We introduce a paradigm for extracting task-related features from LLM-generated planning queries to form a closed loop between high-level planning and low-level control. Extensive experiments show the effectiveness of EmbodiedGPT on embodied tasks, including embodied planning, embodied control, visual captioning, and visual question answering. Notably, EmbodiedGPT significantly enhances the success rate of the embodied control task by extracting more effective features. It has achieved a remarkable 1.6 times increase in success rate on the Franka Kitchen benchmark and a 1.3 times increase on the Meta-World benchmark, compared to the BLIP-2 baseline fine-tuned with the Ego4D dataset.
+Knowledge graph representation:
+[
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"is a", "summary":"EmbodiedGPT is an end-to-end multi-modal foundation model for embodied AI"}, "to":{"type":"model","name":"multi-modal foundation model"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"used for", "summary":"EmbodiedGPT is an end-to-end multi-modal foundation model for embodied AI"}, "to":{"type":"domain","name":"embodied AI"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"empower", "summary":"EmbodiedGPT empowers embodied agents with multi-modal understanding and execution capabilities"}, "to":{"type":"capability","name":"multi-modal understanding"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"empower", "summary":"EmbodiedGPT empowers embodied agents with multi-modal understanding and execution capabilities"}, "to":{"type":"capability","name":"execution capability"}},
+
+{"from":{"type":"dataset", "name":"EgoCOT"}, "relation":{"name":"is a", "summary":"We craft a large-scale embodied planning dataset, termed EgoCOT"}, "to":{"type":"dataset","name":"large-scale embodied planning dataset"}},
+
+{"from":{"type":"model", "name":"7B large language model"}, "relation":{"name":"adapted to", "summary":"We adapt a 7B large language model (LLM) to the EgoCOT dataset via prefix tuning"}, "to":{"type":"dataset","name":"EgoCOT"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"extract", "summary":"We introduce a paradigm for extracting task-related features from LLM-generated planning queries to form a closed loop between high-level planning and low-level control"}, "to":{"type":"concept","name":"task-related features"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"enhance", "summary":"EmbodiedGPT significantly enhances the success rate of the embodied control task by extracting more effective features"}, "to":{"type":"concept","name":"success rate"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"outperform", "summary":"EmbodiedGPT has achieved a remarkable 1.6 times increase in success rate on the Franka Kitchen benchmark and a 1.3 times increase on the Meta-World benchmark, compared to the BLIP-2 baseline fine-tuned with the Ego4D dataset"}, "to":{"type":"model","name":"BLIP-2"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"tested on", "summary":"EmbodiedGPT has achieved a remarkable 1.6 times increase in success rate on the Franka Kitchen benchmark and a 1.3 times increase on the Meta-World benchmark, compared to the BLIP-2 baseline fine-tuned with the Ego4D dataset"}, "to":{"type":"benchmark","name":"Franka Kitchen"}},
+
+{"from":{"type":"model", "name":"EmbodiedGPT"}, "relation":{"name":"tested on", "summary":"EmbodiedGPT has achieved a remarkable 1.6 times increase in success rate on the Franka Kitchen benchmark and a 1.3 times increase on the Meta-World benchmark, compared to the BLIP-2 baseline fine-tuned with the Ego4D dataset"}, "to":{"type":"benchmark","name":"Meta-World"}}
+]
+
+Abstract:
+The recent popularity of large language models (LLMs) has brought a significant impact to boundless fields, particularly through their open-ended ecosystem such as the APIs, open-sourced models, and plugins. However, with their widespread deployment, there is a general lack of research that thoroughly discusses and analyzes the potential risks concealed. In that case, we intend to conduct a preliminary but pioneering study covering the robustness, consistency, and credibility of LLMs systems. With most of the related literature in the era of LLM uncharted, we propose an automated workflow that copes with an upscaled number of queries/responses. Overall, we conduct over a million queries to the mainstream LLMs including ChatGPT, LLaMA, and OPT. Core to our workflow consists of a data primitive, followed by an automated interpreter that evaluates these LLMs under different adversarial metrical systems. As a result, we draw several, and perhaps unfortunate, conclusions that are quite uncommon from this trendy community. Briefly, they are: (i)-the minor but inevitable error occurrence in the user-generated query input may, by chance, cause the LLM to respond unexpectedly; (ii)-LLMs possess poor consistency when processing semantically similar query input. In addition, as a side finding, we find that ChatGPT is still capable to yield the correct answer even when the input is polluted at an extreme level. While this phenomenon demonstrates the powerful memorization of the LLMs, it raises serious concerns about using such data for LLM-involved evaluation in academic development. To deal with it, we propose a novel index associated with a dataset that roughly decides the feasibility of using such data for LLM-involved evaluation. Extensive empirical studies are tagged to support the aforementioned claims.
+
+Knowledge graph representation:
+[
+{"from":{"type":"model", "name":"large language model"}, "relation":{"name":"impact", "summary":"The recent popularity of large language models (LLMs) has brought a significant impact to boundless fields"}, "to":{"type":"field","name":"various fields"}},
+
+{"from":{"type":"model", "name":"large language model"}, "relation":{"name":"lack research on", "summary":"with their widespread deployment, there is a general lack of research that thoroughly discusses and analyzes the potential risks concealed"}, "to":{"type":"concept","name":"risks"}},
+
+{"from":{"type":"model", "name":"automated evaluation workflow"}, "relation":{"name":"evaluate", "summary":"we intend to conduct a preliminary but pioneering study covering the robustness, consistency, and credibility of LLMs systems. With most of the related literature in the era of LLM uncharted, we propose an automated workflow that copes with an upscaled number of queries/responses."}, "to":{"type":"metrics","name":"robustness"}},
+
+{"from":{"type":"model", "name":"automated evaluation workflow"}, "relation":{"name":"evaluate", "summary":"we intend to conduct a preliminary but pioneering study covering the robustness, consistency, and credibility of LLMs systems. With most of the related literature in the era of LLM uncharted, we propose an automated workflow that copes with an upscaled number of queries/responses."}, "to":{"type":"metrics","name":"consistency"}},
+
+{"from":{"type":"model", "name":"automated evaluation workflow"}, "relation":{"name":"evaluate", "summary":"we intend to conduct a preliminary but pioneering study covering the robustness, consistency, and credibility of LLMs systems. With most of the related literature in the era of LLM uncharted, we propose an automated workflow that copes with an upscaled number of queries/responses."}, "to":{"type":"metrics","name":"credibility"}},
+
+{"from":{"type":"model", "name":"automated evaluation workflow"}, "relation":{"name":"copes with", "summary":"we propose an automated workflow that copes with an upscaled number of queries/responses"}, "to":{"type":"concept","name":"upscaled number of queries/responses"}},
+
+{"from":{"type":"model", "name":"automated workflow"}, "relation":{"name":"evaluate", "summary":"an automated interpreter that evaluates these LLMs under different adversarial metrical systems"}, "to":{"type":"model","name":"large language model"}},
+
+{"from":{"type":"model", "name":"automated workflow"}, "relation":{"name":"evaluate", "summary":"an automated interpreter that evaluates these LLMs under different adversarial metrical systems"}, "to":{"type":"metrics","name":"adversarial metrical systems"}},
+
+{"from":{"type":"model", "name":"automated workflow"}, "relation":{"name":"tested on", "summary":"we conduct over a million queries to the mainstream LLMs including ChatGPT, LLaMA, and OPT."}, "to":{"type":"model","name":"ChatGPT"}},
+
+{"from":{"type":"model", "name":"automated workflow"}, "relation":{"name":"tested on", "summary":"we conduct over a million queries to the mainstream LLMs including ChatGPT, LLaMA, and OPT."}, "to":{"type":"model","name":"LLaMA"}},
+
+{"from":{"type":"model", "name":"automated workflow"}, "relation":{"name":"tested on", "summary":"we conduct over a million queries to the mainstream LLMs including ChatGPT, LLaMA, and OPT."}, "to":{"type":"model","name":"OPT"}},
+
+{"from":{"type":"model", "name":"error occurrence in user-generated input"}, "relation":{"name":"causes", "summary":"the minor but inevitable error occurrence in the user-generated query input may, by chance, cause the LLM to respond unexpectedly"}, "to":{"type":"concept","name":"unexpected response from LLM"}},
+
+{"from":{"type":"model", "name":"semantically similar query input"}, "relation":{"name":"poor consistency", "summary":"LLMs possess poor consistency when processing semantically similar query input"}, "to":{"type":"concept","name":"inconsistent LLM response"}},
+
+{"from":{"type":"model", "name":"ChatGPT with polluted input"}, "relation":{"name":"yield", "summary":"ChatGPT is still capable to yield the correct answer even when the input is polluted at an extreme level, demonstrating the powerful memorization of the LLMs"}, "to":{"type":"concept","name":"correct answer"}},
+
+{"from":{"type":"model", "name":"LLM-involved evaluation"}, "relation":{"name":"raise", "summary":"it raises serious concerns about using such data for LLM-involved evaluation in academic development"}, "to":{"type":"concept","name":"concerns"}},
+
+{"from":{"type":"model", "name":"novel dataset index"}, "relation":{"name":"measures", "summary":"we propose a novel index associated with a dataset that roughly decides the feasibility of using such data for LLM-involved evaluation"}, "to":{"type":"concept","name":"feasibility for LLM-involved evaluation"}}
+
+]
