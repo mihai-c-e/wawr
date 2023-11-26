@@ -125,17 +125,23 @@ class Neo4jConnection:
                     knowledge_piece.append(e['name'])
                     nodes.add(e['name'])
                     if prev_node and prev_rel:
-                        relationship = [type(prev_rel).__name__, prev_node['name'], e['name']]
+                        relationship = (type(prev_rel).__name__, prev_node['name'], e['name'])
                         relationships.add(relationship)
+                    prev_node = e
                 else:
-                    ref = f'"{e["summary"]}"\nFrom:{e["title"]}'
+                    #ref = f'"{e["summary"]}"\nFrom:{e["title"]}'
+                    ref = {
+                        'citation': e['summary'],
+                        'source': e['title']
+                    }
                     if not ref in refs_list:
                         ref_index += 1
                         refs_list.append(ref)
                     knowledge_piece.append(f'{type(e).__name__} ({ref_index})' )
+                    prev_rel = e
             paths.append(knowledge_piece)
-        refs = 'Sources:\n' + '\n'.join((f'{i+1}. {r}') for i, r in enumerate(refs_list))
-        return paths, refs, nodes, relationships
+        refs = 'Sources:\n' + '\n'.join((f'{i+1}. From {r["source"]}: "{r["citation"]}"') for i, r in enumerate(refs_list))
+        return paths, refs, refs_list, nodes, relationships
 
 if __name__ == '__main__':
     con = Neo4jConnection()

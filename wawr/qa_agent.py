@@ -5,9 +5,11 @@ import logging
 import itertools
 from typing import Iterable
 import threading
+import time
 
 class QAResponse:
-    def __init__(self, question, observer = None):
+    def __init__(self, id, question, observer = None):
+        self.id = id
         self.lock = threading.RLock()
         self.question = question
         self.keywords = None
@@ -17,6 +19,7 @@ class QAResponse:
         self.relationship_keywords_match = None
         self.graph_results = None
         self.refs = None
+        self.refs_list = None
         self.retrieved_nodes = None
         self.retrieved_relationships = None
         self.answer = None
@@ -46,29 +49,51 @@ class QAResponse:
 
 
 class QAAgent:
-    def __init__(self):
+    def __init__(self, query_depth: int=2, style: str = 'journalistic', temperature: float = 0.1, lazy: bool = True):
+        self.lazy = lazy
+        self.style = style
+        self.temperature = temperature
+        self.query_depth = query_depth
+        if not lazy:
+            self._init_connections()
+        else:
+            self.llm = None
+            self.db = None
+            self.embedding_service = None
+            self.kw_matching_service = None
+
+    def _init_connections(self):
         self.llm = ChatGPTConnection()
         self.db = Neo4jConnection()
         self.embedding_service = EmbeddingService()
         self.kw_matching_service = KeywordMatchingService()
 
-    def async_answer(self, q: str, observers = None):
-        response = QAResponse(q, observers)
+    def threaded_answer(self, q: str, observers = None, id=None, sleep_first: int = 10):
+        response = QAResponse(question=q, observer=observers, id=id)
         thread = threading.Thread(target = self.answer, args=(q, response))
         thread.start()
         return response, thread
 
-    def answer(self, q: str, response = None, observers = None) -> QAResponse:
+    def answer(self, q: str, response = None, observers = None, id = None, sleep_first: int=10) -> QAResponse:
+        if sleep_first:
+            time.sleep(sleep_first)
+        response.synchronised_update_value("progress", 0.0)
+        if self.lazy:
+            response.synchronised_update_value("status", "Connecting...")
+            self._init_connections()
+
         if not response:
-            response = QAResponse(q, observers)
-        response.synchronised_update_value("status", "Getting keyword recommendations...")
+            response = QAResponse(question=q, observer=observers, id =id)
+        response.synchronised_update_value("status", "Mapping question to Cypher query...")
+        response.synchronised_update_value("progress", 0.2)
         keywords = self.llm.question_to_keywords(q)
         keywords['relations'].extend(['is', 'part of'])
         response.synchronised_update_value("keywords", keywords)
-
-        response.synchronised_update_value("status", "Matching keyword recommendations with actual values...")
+        response.synchronised_update_value("progress", 0.25)
         response.synchronised_update_value("node_keywords_match_raw", self.kw_matching_service.match_keywords_node(keywords['nodes'], k=50))
+        response.synchronised_update_value("progress", 0.3)
         response.synchronised_update_value("relationship_keywords_match_raw", self.kw_matching_service.match_keywords_relationship(keywords['relations'], k=50))
+        response.synchronised_update_value("progress", 0.35)
         #q_match = self.kw_matching_service.match_keywords([q,], k=100)
 
         nodes = list(itertools.chain(
@@ -76,26 +101,31 @@ class QAAgent:
                 for k in response.synchronised_get_value("node_keywords_match_raw").keys()]
         ))
         response.synchronised_update_value("node_keywords_match", nodes)
-
+        response.synchronised_update_value("progress", 0.4)
         relationships = set()
         for k in response.synchronised_get_value("relationship_keywords_match_raw").keys():
             relationships.update({v[0].page_content for v in response.synchronised_get_value("relationship_keywords_match_raw")[k]})
         relationships = list(relationships)
         response.synchronised_update_value("relationship_keywords_match", relationships)
+        response.synchronised_update_value("progress", 0.45)
         #nodes1 = keywords_match['nodes'][0]
         #nodes2 = keywords_match['nodes'][1]
         #graph_results, refs = self.db.query_for_paths_and_relationships(nodes1, nodes2, relationships, depth='*1..5')
 
         response.synchronised_update_value("status", "Querying knowledge graph...")
-        graph_results, refs, nodes, relationships = self.db.query_for_paths_and_relationships2(nodes, relationships, depth='*0..2')
+        depth = f'*0..{self.query_depth}'
+        graph_results, refs, refs_list, nodes, relationships = self.db.query_for_paths_and_relationships2(nodes, relationships, depth=depth)
+        response.synchronised_update_value("progress", 0.7)
         response.synchronised_update_value("graph_results", graph_results)
         response.synchronised_update_value("refs", refs)
+        response.synchronised_update_value("refs_list", refs_list)
         response.synchronised_update_value("retrieved_nodes", nodes)
         response.synchronised_update_value("retrieved_relationships", relationships)
 
         response.synchronised_update_value("status", "Composing answer...")
-        response.synchronised_update_value("answer", self.llm.compose_answer_from_paths_news_style(q, graph_results, refs))
+        response.synchronised_update_value("answer", self.llm.compose_answer_from_paths_news_style(q, graph_results, refs, style=self.style, temperature=self.temperature))
         response.synchronised_update_value("status", "Completed")
+        response.synchronised_update_value("progress", 1.0)
         return response
 
 
@@ -107,14 +137,12 @@ if __name__ == '__main__':
         def updated(self, bj, member, value):
             print(f'Field {member} updated with {value}')
 
-    agent = QAAgent()
-    response, thread = agent.async_answer(
-        'What are some applications of large language models in medical science?', observers=QAResponseObserver()
+    agent = QAAgent(query_depth=2)
+    q = 'What are some applications of large language models in medical science?'
+    q = 'Which opinion on gpt-4 is the most divergent?'
+    response, thread = agent.threaded_answer(
+        q, observers=QAResponseObserver()
     )
     thread.join()
-    #agent.answer('What improvements have been brought to large language models?')
-    #agent.answer('What do you know about GPT-4 and its applications?')
-    #agent.answer('What do you know about stock market prediction with GPT models?')
-    #agent.answer('What is GPT-4 and what are its applications?')
-    #agent.answer('Can large language models be used for code generation?')
-    #agent.answer('What do you know about knowledge graphs?')
+    print('Done')
+    #agent.answer(' ?')

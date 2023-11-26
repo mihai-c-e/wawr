@@ -120,6 +120,7 @@ class ChatGPTConnection:
                    f"{refs}.\n\nThis is the question: {question}"
                    f" Using only the citations above, try to infer and argument an answer to the question."
                    f" Include index references to citations and exclude citations that are not clearly related to the question.\n"
+                   f"      "
                    #f"Insert index references to the corresponding facts in your answer."
                    )
         messages = [
@@ -130,16 +131,17 @@ class ChatGPTConnection:
                 content=content
             ),
         ]
-        response = self.cllm(messages, temperature=0.1).content + '\n' + refs
+        response = self.cllm(messages, temperature=0.1).content
 
         return response
 
-    def compose_answer_from_paths_news_style(self, question, paths, refs):
+    def compose_answer_from_paths_news_style(self, question, paths, refs, style: str = 'journalistic', temperature: float = 0.1):
         paths_string = '\n'.join([f'{i+1}. ' + '-'.join(path) for i, path in enumerate(paths)])
         content = (f"The following are citations from research papers:\n"
                    f"{refs}.\n\n This is the question: {question}"
-                   f" Using only the citations above, try to infer an answer to the question. Write in journalistic style as for a person not familiar with the topic."
-                   f" Include index references to citations and exclude citations that are not clearly related to the question.\n"
+                   f" Using only the citations above, try to infer an answer to the question. "
+                   f"Write in {style} style as for a person not familiar with the topic."
+                   f" Include index references to citations as provided, but do not list references in your response.\n"
                    #f"Insert index references to the corresponding facts in your answer."
                    )
         messages = [
@@ -150,7 +152,7 @@ class ChatGPTConnection:
                 content=content
             ),
         ]
-        response = self.cllm(messages, temperature=0.1).content + '\n' + refs
+        response = self.cllm(messages, temperature=temperature).content
 
         return response
 
