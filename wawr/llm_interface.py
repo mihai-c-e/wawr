@@ -1,5 +1,4 @@
 import pandas as pd
-import json
 from datetime import datetime
 import time
 import os
@@ -8,6 +7,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from langchain.embeddings import OpenAIEmbeddings
+
+from wawr.utils import read_json
 
 
 from langchain.prompts.chat import (
@@ -28,19 +29,19 @@ import logging
 os.environ['OPENAI_API'] = "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"
 
 class ChatGPTConnection:
-    def __init__(self):
+    def __init__(self, model_name: str = 'gpt-3.5-turbo-16k-0613'):
         self.cllm = None
         self.memory = None
-        self.connect()
+        self.connect(model_name=model_name)
         pass
 
     def check_env(self):
         required_keys = {'OPENAI_API'}
         check_env(required_keys)
 
-    def connect(self):
+    def connect(self, model_name: str = 'gpt-3.5-turbo-16k-0613'):
         self.check_env()
-        self.cllm = ChatOpenAI(openai_api_key=os.environ['OPENAI_API'], model_name='gpt-3.5-turbo-16k-0613')
+        self.cllm = ChatOpenAI(openai_api_key=os.environ['OPENAI_API'], model_name=model_name)
         self.memory = ConversationBufferMemory()
 
     def question_to_keywords(self, question: str):
@@ -72,7 +73,7 @@ class ChatGPTConnection:
             ),
         ]
         response = self.cllm(messages, temperature=0.1).content
-        response=json.loads(response)
+        response=read_json(response)
         return response
 
 
@@ -92,7 +93,7 @@ class ChatGPTConnection:
             ),
         ]
         response = self.cllm(messages, temperature=0.1).content
-        response = json.loads(response)
+        response = read_json(response)
         return response
 
     def split_match_against_keywords(self, set1, set2, chunk_size: int = 1000) -> dict:
@@ -143,6 +144,13 @@ class ChatGPTConnection:
                    f"Write in {style} style as for a person not familiar with the topic."
                    f" Include index references to citations as provided, but do not list references in your response.\n"
                    #f"Insert index references to the corresponding facts in your answer."
+                   )
+        content = (f"The following are paths in a neo4j knowledge graph, containing nodes, relationships and citations extracted from research papers:\n"
+                   f"{refs}.\n\n This is the question: {question}"
+                   f" Using only the paths above, try to infer an answer to the question. "
+                   f"Write in {style} style as for a person not familiar with the topic."
+                   f" Include index references to citations as provided, referencing thei reference_id field, but do not list references in your response.\n"
+                   # f"Insert index references to the corresponding facts in your answer."
                    )
         messages = [
             SystemMessage(

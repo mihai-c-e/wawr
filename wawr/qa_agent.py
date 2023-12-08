@@ -1,6 +1,9 @@
 from wawr.llm_interface import ChatGPTConnection, EmbeddingService
 from wawr.matcher import KeywordMatchingService
 from wawr.db_interface import Neo4jConnection
+from py2neo.data import Node, Relationship, Path
+from py2neo import walk
+from typing import List, Set, Dict, Any
 import logging
 import itertools
 from typing import Iterable
@@ -17,7 +20,7 @@ class QAResponse:
         self.relationship_keywords_match_raw = None
         self.node_keywords_match = None
         self.relationship_keywords_match = None
-        self.graph_results = None
+        self.paths = None
         self.refs = None
         self.refs_list = None
         self.retrieved_nodes = None
@@ -63,7 +66,7 @@ class QAAgent:
             self.kw_matching_service = None
 
     def _init_connections(self):
-        self.llm = ChatGPTConnection()
+        self.llm = ChatGPTConnection(model_name='gpt-4-1106-preview')
         self.db = Neo4jConnection()
         self.embedding_service = EmbeddingService()
         self.kw_matching_service = KeywordMatchingService()
@@ -74,7 +77,25 @@ class QAAgent:
         thread.start()
         return response, thread
 
-    def answer(self, q: str, response = None, observers = None, id = None, sleep_first: int=10) -> QAResponse:
+    def _extract_unique_nodes(self, paths: List[Path]) -> List[Node]:
+        return list(set([n for path in paths for n in path.nodes]))
+
+    def _extract_unique_relationships(self, paths: List[Path]) -> List[Relationship]:
+        return list(set([r for path in paths for r in path.relationships]))
+
+    def _extract_reference_relationships(self, paths: List[Path]) -> List[Relationship]:
+        return list(set([r for path in paths for r in path.relationships if 'summary' in r]))
+
+    def _assign_relationship_id(self, relationships: List[Relationship]) -> None:
+        for i, rel in enumerate(relationships):
+            rel['reference_id'] = i + 1
+
+    def refs_to_text(self, refs_list: List[Relationship]) -> str:
+        l = lambda ref: f"{ref['reference_id']}. {ref['research']} from {ref['title']}: \"{ref['summary']}\""
+        return '\n'.join([l(rel) for rel in refs_list])
+
+
+    def answer(self, q: str, response = None, observers = None, id = None, sleep_first: int=5) -> QAResponse:
         if sleep_first:
             time.sleep(sleep_first)
         response.synchronised_update_value("progress", 0.0)
@@ -94,7 +115,6 @@ class QAAgent:
         response.synchronised_update_value("progress", 0.3)
         response.synchronised_update_value("relationship_keywords_match_raw", self.kw_matching_service.match_keywords_relationship(keywords['relations'], k=50))
         response.synchronised_update_value("progress", 0.35)
-        #q_match = self.kw_matching_service.match_keywords([q,], k=100)
 
         nodes = list(itertools.chain(
             *[[q[0].page_content for q in response.synchronised_get_value("node_keywords_match_raw")[k]]
@@ -114,16 +134,25 @@ class QAAgent:
 
         response.synchronised_update_value("status", "Querying knowledge graph...")
         depth = f'*0..{self.query_depth}'
-        graph_results, refs, refs_list, nodes, relationships = self.db.query_for_paths_and_relationships2(nodes, relationships, depth=depth)
-        response.synchronised_update_value("progress", 0.7)
-        response.synchronised_update_value("graph_results", graph_results)
-        response.synchronised_update_value("refs", refs)
+        paths = self.db.query_for_paths(nodes, relationships, depth=depth)
+        response.synchronised_update_value("paths", paths)
+
+        response.synchronised_update_value("retrieved_nodes", self._extract_unique_nodes(paths))
+
+        unique_relationships = self._extract_unique_relationships(paths)
+        response.synchronised_update_value("retrieved_relationships", unique_relationships)
+
+        refs_list = self._extract_reference_relationships(paths)
+        self._assign_relationship_id(refs_list)
         response.synchronised_update_value("refs_list", refs_list)
-        response.synchronised_update_value("retrieved_nodes", nodes)
-        response.synchronised_update_value("retrieved_relationships", relationships)
+
+        refs = self.refs_to_text(refs_list)
+        response.synchronised_update_value("refs", refs)
+
+        response.synchronised_update_value("progress", 0.7)
 
         response.synchronised_update_value("status", "Composing answer...")
-        response.synchronised_update_value("answer", self.llm.compose_answer_from_paths_news_style(q, graph_results, refs, style=self.style, temperature=self.temperature))
+        response.synchronised_update_value("answer", self.llm.compose_answer_from_paths_news_style(q, refs, refs, style=self.style, temperature=self.temperature))
         response.synchronised_update_value("status", "Completed")
         response.synchronised_update_value("progress", 1.0)
         return response
@@ -139,7 +168,7 @@ if __name__ == '__main__':
 
     agent = QAAgent(query_depth=2)
     q = 'What are some applications of large language models in medical science?'
-    q = 'Which opinion on gpt-4 is the most divergent?'
+    #q = 'Which opinion on gpt-4 is the most divergent?'
     response, thread = agent.threaded_answer(
         q, observers=QAResponseObserver()
     )
