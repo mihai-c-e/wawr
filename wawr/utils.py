@@ -10,6 +10,17 @@ def check_env(required_keys: Set) -> None:
 def read_json(s: str) -> Dict[Any, Any]:
     if '```json' in s:
         s = s.split('```json')[1]
-        if '```' in s:
-            s = s.split('```')[0]
+    if 'json```' in s:
+        s = s.split('json```')[1]
+    if '```' in s:
+        s = s.split('```')[0]
     return json.loads(s)
+
+def read_html(s: str) -> Dict[Any, Any]:
+    if '```html' in s:
+        s = s.split('```html')[1]
+    if 'html```' in s:
+        s = s.split('html```')[1]
+    if '```' in s:
+        s = s.split('```')[0]
+    return s

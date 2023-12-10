@@ -1,0 +1,322 @@
+Example abstract 1:
+
+this work is intended as a voice in the discussion over previous claims that a pretrained large language model (llm) based on the transformer model architecture can be sentient. such claims have been made concerning the lamda model and also concerning the current wave of llm-powered chatbots, such as chatgpt. this claim, if confirmed, would have serious ramifications in the natural language processing (nlp) community due to wide-spread use of similar models. however, here we take the position that such a large language model cannot be sentient, or conscious, and that lamda in particular exhibits no advances over other similar models that would qualify it. we justify this by analysing the transformer architecture through integrated information theory of consciousness. we see the claims of sentience as part of a wider tendency to use anthropomorphic language in nlp reporting. regardless of the veracity of the claims, we consider this an opportune moment to take stock of progress in language modelling and consider the ethical implications of the task. in order to make this work helpful for readers outside the nlp community, we also present the necessary background in language modelling.
+
+Resulting knowledge graph in json format:
+
+[
+  {
+    "from": {
+      "type": "model family",
+      "name": "large language model"
+    },
+    "relation": {
+      "name": "based on",
+      "research": "context",
+      "summary": "LLMs are based on the Transformer model architecture"
+    },
+    "to": {
+      "type": "model architecture",
+      "name": "Transformer"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "LaMDA"
+    },
+    "relation": {
+      "name": "subject of",
+      "research": "context",
+      "summary": "this work is intended as a voice in the discussion over previous claims that a pretrained large language model (llm) based on the transformer model architecture can be sentient. such claims have been made concerning the lamda model and also concerning the current wave of llm-powered chatbots, such as chatgpt."
+    },
+    "to": {
+      "type": "claim",
+      "name": "sentience"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "ChatGPT"
+    },
+    "relation": {
+      "name": "subject of",
+      "research": "context",
+      "summary": "this work is intended as a voice in the discussion over previous claims that a pretrained large language model (llm) based on the transformer model architecture can be sentient. such claims have been made concerning the lamda model and also concerning the current wave of llm-powered chatbots, such as chatgpt."
+    },
+    "to": {
+      "type": "claim",
+      "name": "sentience"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "ChatGPT"
+    },
+    "relation": {
+      "name": "part of",
+      "research": "context",
+      "summary": "ChatGPT is part of the current wave of LLM-powered chatbots"
+    },
+    "to": {
+      "type": "trend",
+      "name": "LLM-powered chatbots"
+    }
+  },
+  {
+    "from": {
+      "type": "claim",
+      "name": "sentience"
+    },
+    "relation": {
+      "name": "has ramifications",
+      "research": "context",
+      "summary": "Claims of LLM sentience would have serious ramifications in the NLP community"
+    },
+    "to": {
+      "type": "community",
+      "name": "NLP community"
+    }
+  },
+  {
+    "from": {
+      "type": "model family",
+      "name": "large language model"
+    },
+    "relation": {
+      "name": "cannot be",
+      "research": "claim",
+      "summary": "The position taken is that a large language model cannot be sentient or conscious"
+    },
+    "to": {
+      "type": "claim",
+      "name": "sentience"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "LaMDA"
+    },
+    "relation": {
+      "name": "does not exhibit",
+      "research": "claim",
+      "summary": "LaMDA exhibits no advances over other models that would qualify it as sentient"
+    },
+    "to": {
+      "type": "claim",
+      "name": "sentience"
+    }
+  },
+  {
+    "from": {
+      "type": "theory",
+      "name": "Integrated Information Theory of consciousness"
+    },
+    "relation": {
+      "name": "used to analyze",
+      "research": "method",
+      "summary": "The Transformer architecture is analyzed through Integrated Information Theory of consciousness"
+    },
+    "to": {
+      "type": "model architecture",
+      "name": "Transformer"
+    }
+  },
+  {
+    "from": {
+      "type": "tendency",
+      "name": "anthropomorphic language"
+    },
+    "relation": {
+      "name": "used in",
+      "research": "context",
+      "summary": "Anthropomorphic language is used in NLP reporting, contributing to claims of sentience"
+    },
+    "to": {
+      "type": "field",
+      "name": "Natural Language Processing (NLP)"
+    }
+  },
+  {
+    "from": {
+      "type": "field",
+      "name": "language modelling"
+    },
+    "relation": {
+      "name": "should consider",
+      "research": "reflection",
+      "summary": "This is an opportune moment to take stock of progress in language modelling and consider ethical implications"
+    },
+    "to": {
+      "type": "value",
+      "name": "ethics"
+    }
+  }
+]
+
+Example abstract 2:
+
+with the rapid progress of large language models (llms), many downstream nlp tasks can be well solved given appropriate prompts. though model developers and researchers work hard on dialog safety to avoid generating harmful content from llms, it is still challenging to steer ai-generated content (aigc) for the human good. as powerful llms are devouring existing text data from various domains (e.g., gpt-3 is trained on 45tb texts), it is natural to doubt whether the private information is included in the training data and what privacy threats can these llms and their downstream applications bring. in this paper, we study the privacy threats from openai's chatgpt and the new bing enhanced by chatgpt and show that application-integrated llms may cause new privacy threats. to this end, we conduct extensive experiments to support our claims and discuss llms' privacy implications.
+
+Resulting knowledge graph in json format:
+
+[
+  {
+    "from": {
+      "type": "model family",
+      "name": "large language model"
+    },
+    "relation": {
+      "name": "enable",
+      "research": "context",
+      "summary": "LLMs enable the solving of many downstream NLP tasks with appropriate prompts"
+    },
+    "to": {
+      "type": "task",
+      "name": "NLP tasks"
+    }
+  },
+  {
+    "from": {
+      "type": "technique",
+      "name": "large language model prompting"
+    },
+    "relation": {
+      "name": "important to",
+      "research": "context",
+      "summary": "LLMs enable the solving of many downstream NLP tasks with appropriate prompts"
+    },
+    "to": {
+      "type": "task",
+      "name": "NLP tasks"
+    }
+  },
+  {
+    "from": {
+      "type": "effort",
+      "name": "dialog safety"
+    },
+    "relation": {
+      "name": "aims to",
+      "research": "context",
+      "summary": "Dialog safety efforts aim to avoid generating harmful content from LLMs"
+    },
+    "to": {
+      "type": "goal",
+      "name": "avoiding harmful content generation"
+    }
+  },
+  {
+    "from": {
+      "type": "community",
+      "name": "AI community"
+    },
+    "relation": {
+      "name": "challanged to avoid",
+      "research": "context",
+      "summary": "though model developers and researchers work hard on dialog safety to avoid generating harmful content from llms, it is still challenging to steer ai-generated content (aigc) for the human good"
+    },
+    "to": {
+      "type": "task",
+      "name": "harmful content generation"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "GPT-3"
+    },
+    "relation": {
+      "name": "trained on",
+      "research": "context",
+      "summary": "GPT-3 is trained on 45TB of text data from various domains"
+    },
+    "to": {
+      "type": "data",
+      "name": "45TB text data"
+    }
+  },
+  {
+    "from": {
+      "type": "data",
+      "name": "45TB text data"
+    },
+    "relation": {
+      "name": "is a concern for",
+      "research": "context ",
+      "summary": "There is a concern about private information being included in LLM training data"
+    },
+    "to": {
+      "type": "goal",
+      "name": "privacy"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "ChatGPT"
+    },
+    "relation": {
+      "name": "examined for",
+      "research": "contribution",
+      "summary": "The paper studies privacy threats from OpenAI's ChatGPT and the New Bing enhanced by ChatGPT"
+    },
+    "to": {
+      "type": "goal",
+      "name": "privacy"
+    }
+  },
+  {
+    "from": {
+      "type": "model",
+      "name": "Bing enhanced by ChatGPT"
+    },
+    "relation": {
+      "name": "examined for",
+      "research": "contribution",
+      "summary": "The paper studies privacy threats from OpenAI's ChatGPT and the New Bing enhanced by ChatGPT"
+    },
+    "to": {
+      "type": "goal",
+      "name": "privacy"
+    }
+  },
+  {
+    "from": {
+      "type": "model family",
+      "name": "application-integrated large language model"
+    },
+    "relation": {
+      "name": "cause concerns on",
+      "research": "finding",
+      "summary": "Application-integrated LLMs may cause new privacy threats"
+    },
+    "to": {
+      "type": "goal",
+      "name": "privacy"
+    }
+  },
+  {
+    "from": {
+      "type": "model family",
+      "name": "large language model"
+    },
+    "relation": {
+      "name": "experiments conducted on/for",
+      "research": "method",
+      "summary": "Extensive experiments are conducted to support the claims about privacy threats from LLMs"
+    },
+    "to": {
+      "type": "goal",
+      "name": "privacy"
+    }
+  }
+]
+
+Abstract:
+
+
+

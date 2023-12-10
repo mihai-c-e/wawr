@@ -8,7 +8,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from langchain.embeddings import OpenAIEmbeddings
 
-from wawr.utils import read_json
+from wawr.utils import read_json, read_html
 
 
 from langchain.prompts.chat import (
@@ -47,26 +47,13 @@ class ChatGPTConnection:
     def question_to_keywords(self, question: str):
         messages = [
             SystemMessage(
-                content=f'You are an agent that receives a free text questions and, instead of trying to answer it, answer with the nodes and relations that would put the question into a knowledge graph. Example - for "How do I reduce model hallucinations?" you should answer with: "model, hallucination, reduce hallucianation".'
-            ),
-            HumanMessage(
-                content=question
-            ),
-        ]
-        response = self.cllm(messages, temperature=0.1).content
-        response = response.split(',')
-
-        return response
-
-
-    def question_to_keywords(self, question: str):
-        messages = [
-            SystemMessage(
                 content='You are an agent that receives a free text questions and, instead of trying to answer it, '
-                        'answer with the 2 most relevant nodes and relations that would put the question into a '
-                        'knowledge graph, in json format. Make sure to include verbs in relations.'
-                        'Example - for "How do I reduce model hallucinations?" you should answer with: '
-                        '"{"nodes":["model", "hallucination"], "relations":["application", "apply to"]}'
+                        'answer with the most relevant nodes and relations that would put the question into a '
+                        'knowledge graph, in json format. Make sure to '
+                        'include verbs in relations. Example: for "How do I reduce model hallucinations?" you should '
+                        'answer with: "{"nodes":["model", "hallucination"], "relations":["application", "apply to"]}. '
+                        'Answer with a valid json and only with '
+                        'a valid json.'
             ),
             HumanMessage(
                 content=question
@@ -142,14 +129,26 @@ class ChatGPTConnection:
                    f"{refs}.\n\n This is the question: {question}"
                    f" Using only the citations above, try to infer an answer to the question. "
                    f"Write in {style} style as for a person not familiar with the topic."
+                   f"Be thorough and try to address the references individually as much as possible. Then, "
+                   f"output a section starting with \"The author's view is ... \" where you make an inference on what "
+                   f"the next important related research would be. "
                    f" Include index references to citations as provided, but do not list references in your response.\n"
                    #f"Insert index references to the corresponding facts in your answer."
                    )
         content = (f"The following are paths in a neo4j knowledge graph, containing nodes, relationships and citations extracted from research papers:\n"
                    f"{refs}.\n\n This is the question: {question}"
-                   f" Using only the paths above, try to infer an answer to the question. "
-                   f"Write in {style} style as for a person not familiar with the topic."
-                   f" Include index references to citations as provided, referencing thei reference_id field, but do not list references in your response.\n"
+                   f" Using only the paths above, try to infer an answer to the question. If none of the paths are "
+                   f"relevant to the question answer, say so and do not provide any other answer."
+                   f"If some or all paths are relevant to the question, write the answer in {style} style as for a "
+                   f"person not familiar with the topic."
+                   f"Be thorough and try to address the references individually as much as possible. Then, "
+                   f"output a section starting with \"The author's view is ... \" where you make an inference on what "
+                   f"the next important related research would be. "
+                   f" Include index references to citations as provided, referencing the reference_id field, but do not list references in your response.\n"
+                   f" Provide your answer as a html snipped that will be embedded into an existing html page with an "
+                   f"existing title. Use "
+                   f"html "
+                   f"to format your answer - use paragraphs, styling and whatever else you consider necessary."
                    # f"Insert index references to the corresponding facts in your answer."
                    )
         messages = [
@@ -161,7 +160,7 @@ class ChatGPTConnection:
             ),
         ]
         response = self.cllm(messages, temperature=temperature).content
-
+        response = read_html(response)
         return response
 
 

@@ -3,7 +3,7 @@ from wawr.matcher import KeywordMatchingService
 from wawr.db_interface import Neo4jConnection
 from py2neo.data import Node, Relationship, Path
 from py2neo import walk
-from typing import List, Set, Dict, Any
+from typing import List, Set, Dict, Any, Optional
 import logging
 import itertools
 from typing import Iterable
@@ -52,24 +52,33 @@ class QAResponse:
 
 
 class QAAgent:
-    def __init__(self, query_depth: int=2, style: str = 'journalistic', temperature: float = 0.1, lazy: bool = True):
-        self.lazy = lazy
-        self.style = style
-        self.temperature = temperature
-        self.query_depth = query_depth
+    def __init__(self,
+                 query_depth: int=2,
+                 style: str = 'journalistic',
+                 temperature: float = 0.1,
+                 lazy: bool = True,
+                 llm: Optional[ChatGPTConnection] = None,
+                 db: Optional[Neo4jConnection] = None,
+                 embedding_service: Optional[EmbeddingService] = None,
+                 kw_matching_service: Optional[KeywordMatchingService] = None
+                 ):
+        self.lazy: bool = lazy
+        self.style: str = style
+        self.temperature: float = temperature
+        self.query_depth: int = query_depth
+        self.llm: ChatGPTConnection = llm
+        self.db: Neo4jConnection = db
+        self.embedding_service: EmbeddingService = embedding_service
+        self.kw_matching_service: KeywordMatchingService = kw_matching_service
+
         if not lazy:
             self._init_connections()
-        else:
-            self.llm = None
-            self.db = None
-            self.embedding_service = None
-            self.kw_matching_service = None
 
     def _init_connections(self):
-        self.llm = ChatGPTConnection(model_name='gpt-4-1106-preview')
-        self.db = Neo4jConnection()
-        self.embedding_service = EmbeddingService()
-        self.kw_matching_service = KeywordMatchingService()
+        self.llm = self.llm or ChatGPTConnection(model_name='gpt-4-1106-preview')
+        self.db = self.db or Neo4jConnection()
+        self.embedding_service = self.embedding_service or EmbeddingService()
+        self.kw_matching_service = self.kw_matching_service or KeywordMatchingService()
 
     def threaded_answer(self, q: str, observers = None, id=None, sleep_first: int = 10):
         response = QAResponse(question=q, observer=observers, id=id)
@@ -95,66 +104,79 @@ class QAAgent:
         return '\n'.join([l(rel) for rel in refs_list])
 
 
-    def answer(self, q: str, response = None, observers = None, id = None, sleep_first: int=5) -> QAResponse:
-        if sleep_first:
-            time.sleep(sleep_first)
-        response.synchronised_update_value("progress", 0.0)
-        if self.lazy:
-            response.synchronised_update_value("status", "Connecting...")
-            self._init_connections()
+    def answer(self, q: str, response = None, observers = None, id = None, sleep_first: int=1) -> QAResponse:
+        try:
+            if sleep_first:
+                time.sleep(sleep_first)
+            response.synchronised_update_value("progress", 0.0)
+            if self.lazy:
+                response.synchronised_update_value("status", "Connecting...")
+                self._init_connections()
 
-        if not response:
-            response = QAResponse(question=q, observer=observers, id =id)
-        response.synchronised_update_value("status", "Mapping question to Cypher query...")
-        response.synchronised_update_value("progress", 0.2)
-        keywords = self.llm.question_to_keywords(q)
-        keywords['relations'].extend(['is', 'part of'])
-        response.synchronised_update_value("keywords", keywords)
-        response.synchronised_update_value("progress", 0.25)
-        response.synchronised_update_value("node_keywords_match_raw", self.kw_matching_service.match_keywords_node(keywords['nodes'], k=50))
-        response.synchronised_update_value("progress", 0.3)
-        response.synchronised_update_value("relationship_keywords_match_raw", self.kw_matching_service.match_keywords_relationship(keywords['relations'], k=50))
-        response.synchronised_update_value("progress", 0.35)
+            if not response:
+                response = QAResponse(question=q, observer=observers, id =id)
+            response.synchronised_update_value("status", "Mapping question to Cypher query...")
+            response.synchronised_update_value("progress", 0.2)
+            keywords = self.llm.question_to_keywords(q)
+            logging.info(f'Base keywords:\n{keywords}')
+            keywords['relations'].extend(['is', 'part of'])
+            response.synchronised_update_value("keywords", keywords)
+            response.synchronised_update_value("progress", 0.25)
 
-        nodes = list(itertools.chain(
-            *[[q[0].page_content for q in response.synchronised_get_value("node_keywords_match_raw")[k]]
-                for k in response.synchronised_get_value("node_keywords_match_raw").keys()]
-        ))
-        response.synchronised_update_value("node_keywords_match", nodes)
-        response.synchronised_update_value("progress", 0.4)
-        relationships = set()
-        for k in response.synchronised_get_value("relationship_keywords_match_raw").keys():
-            relationships.update({v[0].page_content for v in response.synchronised_get_value("relationship_keywords_match_raw")[k]})
-        relationships = list(relationships)
-        response.synchronised_update_value("relationship_keywords_match", relationships)
-        response.synchronised_update_value("progress", 0.45)
-        #nodes1 = keywords_match['nodes'][0]
-        #nodes2 = keywords_match['nodes'][1]
-        #graph_results, refs = self.db.query_for_paths_and_relationships(nodes1, nodes2, relationships, depth='*1..5')
+            node_keywords_match_raw = self.kw_matching_service.match_keywords_node(keywords['nodes'], k=200, takes=2)
+            response.synchronised_update_value("node_keywords_match_raw", node_keywords_match_raw)
+            logging.info(f"Actual keywords:\n{node_keywords_match_raw}")
+            response.synchronised_update_value("progress", 0.3)
 
-        response.synchronised_update_value("status", "Querying knowledge graph...")
-        depth = f'*0..{self.query_depth}'
-        paths = self.db.query_for_paths(nodes, relationships, depth=depth)
-        response.synchronised_update_value("paths", paths)
+            relationship_keywords_match_raw = (
+                self.kw_matching_service.match_keywords_relationship(keywords['relations'], k=200))
+            response.synchronised_update_value("relationship_keywords_match_raw", relationship_keywords_match_raw)
+            logging.info(f"Actual relationships:\n{relationship_keywords_match_raw}")
+            response.synchronised_update_value("progress", 0.35)
 
-        response.synchronised_update_value("retrieved_nodes", self._extract_unique_nodes(paths))
+            nodes = [
+                [q[0].page_content for q in node_keywords_match_raw[k]]
+                    for k in node_keywords_match_raw.keys()
+            ]
+            response.synchronised_update_value("node_keywords_match", nodes)
+            response.synchronised_update_value("progress", 0.4)
 
-        unique_relationships = self._extract_unique_relationships(paths)
-        response.synchronised_update_value("retrieved_relationships", unique_relationships)
+            relationships = set()
+            for k in relationship_keywords_match_raw.keys():
+                relationships.update({v[0].page_content for v in relationship_keywords_match_raw[k]})
+            relationships = list(relationships)
+            response.synchronised_update_value("relationship_keywords_match", relationships)
+            response.synchronised_update_value("progress", 0.45)
 
-        refs_list = self._extract_reference_relationships(paths)
-        self._assign_relationship_id(refs_list)
-        response.synchronised_update_value("refs_list", refs_list)
 
-        refs = self.refs_to_text(refs_list)
-        response.synchronised_update_value("refs", refs)
+            response.synchronised_update_value("status", "Querying knowledge graph...")
+            depth = f'*0..{self.query_depth}'
+            paths = self.db.query_for_paths_v3(nodes, relationships, depth=depth, limit=self.query_depth*100)
+            response.synchronised_update_value("paths", paths)
 
-        response.synchronised_update_value("progress", 0.7)
+            response.synchronised_update_value("retrieved_nodes", self._extract_unique_nodes(paths))
 
-        response.synchronised_update_value("status", "Composing answer...")
-        response.synchronised_update_value("answer", self.llm.compose_answer_from_paths_news_style(q, refs, refs, style=self.style, temperature=self.temperature))
-        response.synchronised_update_value("status", "Completed")
-        response.synchronised_update_value("progress", 1.0)
+            unique_relationships = self._extract_unique_relationships(paths)
+            response.synchronised_update_value("retrieved_relationships", unique_relationships)
+
+            refs_list = self._extract_reference_relationships(paths)
+            self._assign_relationship_id(refs_list)
+            response.synchronised_update_value("refs_list", refs_list)
+
+            refs = self.refs_to_text(refs_list)
+            response.synchronised_update_value("refs", refs)
+
+            response.synchronised_update_value("progress", 0.7)
+
+            response.synchronised_update_value("status", "Composing answer...")
+            response.synchronised_update_value("answer", self.llm.compose_answer_from_paths_news_style(q, refs, refs, style=self.style, temperature=self.temperature))
+            response.synchronised_update_value("status", "Completed")
+            response.synchronised_update_value("progress", 1.0)
+        except Exception as ex:
+            logging.error(ex)
+            response.synchronised_update_value("status", "Error")
+            response.synchronised_update_value("progress", 0)
+            raise ex
         return response
 
 
@@ -166,9 +188,12 @@ if __name__ == '__main__':
         def updated(self, bj, member, value):
             print(f'Field {member} updated with {value}')
 
-    agent = QAAgent(query_depth=2)
-    q = 'What are some applications of large language models in medical science?'
+    agent = QAAgent(query_depth=3)
+    q = 'large language models and math?'
+    #q = 'What are the achievements in large language models?'
+
     #q = 'Which opinion on gpt-4 is the most divergent?'
+    #q = 'What do you know about llama models?'
     response, thread = agent.threaded_answer(
         q, observers=QAResponseObserver()
     )

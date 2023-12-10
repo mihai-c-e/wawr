@@ -2,7 +2,7 @@ from neo4j import GraphDatabase
 from py2neo.data import Node, Path
 from py2neo import Graph
 import os
-from wawr.utils import check_env
+from wawr.utils import check_env, read_html
 from typing import List, Set, Dict, Any
 import logging
 
@@ -64,29 +64,39 @@ class Neo4jConnection:
             to_ret.append(cursor.current[0])
         return to_ret
 
-    def query_for_paths(self, node_set: Set[str], relationships: str, depth: str = '*') -> List[Path]:
-        node_set = '["'+ '","'.join([n for n in node_set]) + '"]'
-        query = f"""
-            MATCH paths=shortestpath((n1)-[r{depth}]-(n2)) 
-            WHERE (labels(n1) IN {node_set} OR n1.name IN {node_set}) 
-                AND (labels(n2) IN {node_set} OR n2.name IN {node_set}) 
-                AND n1.name <> n2.name
-                AND reduce(total=0, r in relationships(paths)|case when type(r) in {relationships} then 1 else 0 end) > 0
-            RETURN paths LIMIT 150
-            
-        """
-        """
-        UNION
-            MATCH paths=((n3)-[r*1]-(n4)) 
-            WHERE (labels(n3) IN {node_set} OR n3.name IN {node_set})         
-            RETURN paths LIMIT 50
-        """
+    def query_for_paths_v3(self, nodes: List[List[str]], relationships: str, depth: str = '*', limit: int = 100) -> (
+            List)[Path]:
+
+        # WITH [...] AS list_0, [...] AS list 1 ...
+        list_as_query = lambda x: '["' + '","'.join([p for p in x]) + '"]'
+        list_vars = []
+        list_exprs = []
+        for i, nodes_list in enumerate(nodes):
+            var_name = f'list_{i}'
+            list_vars.append(var_name)
+            list_expr = list_as_query(nodes_list)
+            list_exprs.append(list_expr)
+        query = 'WITH ' + ','.join([f'{list_exprs[i]} AS {list_vars[i]}' for i in range(len(list_vars))]) + ' '
+
+        # MATCH...
+        query += f'MATCH p=shortestpath((n1)-[r{depth}]->(n2)) WHERE '
+        conditions = []
+        for var in list_vars:
+            second_list = list(list_vars)
+            second_list.remove(var)
+            second_list_query = '(' + '+'.join(second_list) + ')'
+            condition = f'n1.name in {var} and n2.name in {second_list_query}'
+            conditions.append(condition)
+        conditions_query = '(' + ') OR ('.join(conditions) + ') '
+        query += conditions_query
+        query += f' RETURN p ORDER BY length(p) ASC LIMIT {limit}'
+
         cursor = self.graph.run(query)
-        to_ret = [r[0] for r in list(cursor)]
+        as_list = list(cursor)
+        if len(as_list) > 0 and len(as_list[0]) == 0:
+            raise ValueError('Expected a list of N records X 1 item per recorc')
+        to_ret = [r[0] for r in as_list]
         return to_ret
-
-
-
 
 
 if __name__ == '__main__':
