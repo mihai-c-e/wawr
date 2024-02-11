@@ -1,6 +1,6 @@
-from wawr.llm_interface import ChatGPTConnection, EmbeddingService
-from wawr.matcher import KeywordMatchingService
-from wawr.db_interface import Neo4jConnection
+from ekb.llm_interface import ChatGPTConnection, EmbeddingService
+from ekb.matcher import KeywordMatchingService
+from ekb.db_interface import Neo4jConnection
 from py2neo.data import Node, Relationship, Path
 from py2neo import walk
 from typing import List, Set, Dict, Any, Optional

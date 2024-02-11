@@ -11,3 +11,8 @@ faiss-cpu
 scikit-learn
 openpyxl
 hdbscan
+pydantic
+networkx
+nltk
+pgvector
+python-dotenv==1.0.1

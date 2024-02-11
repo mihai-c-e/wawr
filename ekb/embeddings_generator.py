@@ -1,5 +1,5 @@
-from wawr.llm_interface import ChatGPTConnection, EmbeddingService
-from wawr.db_interface import Neo4jConnection
+from ekb.llm_interface import ChatGPTConnection, EmbeddingService
+from ekb.db_interface import Neo4jConnection
 import os
 from langchain.vectorstores import SKLearnVectorStore
 from langchain.embeddings import OpenAIEmbeddings

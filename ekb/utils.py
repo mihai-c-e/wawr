@@ -2,6 +2,7 @@ import os
 import json
 from typing import Dict, Set, Any
 
+
 def check_env(required_keys: Set) -> None:
     present = required_keys.intersection(os.environ.keys())
     if len(present) < len(required_keys):
@@ -24,3 +25,12 @@ def read_html(s: str) -> Dict[Any, Any]:
     if '```' in s:
         s = s.split('```')[0]
     return s
+
+def get_subclass_by_name(base_class, name):
+    if base_class.__name__ == name:
+        return base_class
+    for cls in base_class.__subclasses__():
+        to_ret = get_subclass_by_name(cls, name)
+        if to_ret is not None:
+            return to_ret
+    return None

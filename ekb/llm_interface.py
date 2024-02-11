@@ -1,3 +1,5 @@
+from typing import Tuple, Dict
+
 import pandas as pd
 from datetime import datetime
 import time
@@ -8,7 +10,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from langchain.embeddings import OpenAIEmbeddings
 
-from wawr.utils import read_json, read_html
+from ekb.utils import read_json, read_html
 
 
 from langchain.prompts.chat import (
@@ -23,15 +25,17 @@ from neo4j import GraphDatabase
 from py2neo.data import Relationship, Node
 from py2neo import Graph, NodeMatcher, RelationshipMatcher
 
-from wawr.utils import check_env
+from ekb.utils import check_env
 import logging
 
 os.environ['OPENAI_API'] = "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"
 
 class ChatGPTConnection:
+    model_name: str
     def __init__(self, model_name: str = 'gpt-3.5-turbo-16k-0613'):
         self.cllm = None
         self.memory = None
+        self.model_name = model_name
         self.connect(model_name=model_name)
         pass
 
@@ -39,10 +43,31 @@ class ChatGPTConnection:
         required_keys = {'OPENAI_API'}
         check_env(required_keys)
 
+    def query_model(self, query: str, max_attempts: int = 5, temperature: float=0.1) -> Tuple[str, Dict]:
+        attempt = 1
+        if isinstance(query, str):
+            query = [HumanMessage(content=query)]
+        while True:
+            try:
+                response = self.cllm(query, temperature=temperature)
+                return response.content, response
+            except Exception as ex:
+                logging.exception(ex)
+                attempt += 1
+                if attempt > max_attempts:
+                    logging.error(f"Server did not reply after {max_attempts} attempts, stopping...")
+                    raise
+                self.connect()
+                logging.error(f"Attempt {attempt}")
+
+
+
     def connect(self, model_name: str = 'gpt-3.5-turbo-16k-0613'):
         self.check_env()
         self.cllm = ChatOpenAI(openai_api_key=os.environ['OPENAI_API'], model_name=model_name)
         self.memory = ConversationBufferMemory()
+
+
 
     def question_to_keywords(self, question: str):
         messages = [
