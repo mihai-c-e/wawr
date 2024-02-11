@@ -15,6 +15,7 @@ def read_json(s: str) -> Dict[Any, Any]:
         s = s.split('json```')[1]
     if '```' in s:
         s = s.split('```')[0]
+    #s = s.replace("\\", r"\\\\")
     return json.loads(s)
 
 def read_html(s: str) -> Dict[Any, Any]:
