@@ -3,8 +3,8 @@ import logging
 import os
 from typing import List, Type, Dict
 
-from sqlalchemy import String, JSON, ForeignKey, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
+from sqlalchemy import String, JSON, ForeignKey, create_engine, select, alias, Column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker, aliased, Query
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
 
@@ -39,11 +39,35 @@ class SQLAElement(SQLABase):
     created_date: Mapped[datetime]
     date: Mapped[datetime] = mapped_column(nullable=True)
     status: Mapped[str]
-
     __mapper_args__ = {
         "polymorphic_identity": "node",
         "polymorphic_on": "record_type"
     }
+    @classmethod
+    def find_by_similarity(
+            cls,
+            with_string: str,
+            with_vector: List[float],
+            distance_threshold: float,
+            embedding_key: str,
+            limit: int
+    ) -> List[SQLAElement]:
+        emb_table = get_embedding_table_class_by_key(embedding_key)
+        subquery = select(SQLAElement, emb_table, emb_table.embedding.cosine_distance(with_vector).label("distance"))\
+            .select_from(SQLAElement).join(emb_table, onclause=SQLAElement.id==emb_table.node_id).subquery()
+        g = aliased(SQLAElement, subquery)
+        e = aliased(emb_table, subquery)
+        query = Query(
+            [g,
+            subquery.columns["distance"]]
+        ).select_from(subquery).where(
+            (subquery.columns["distance"] <= distance_threshold)
+            | (False if with_string is None else g.text.ilike(with_string))
+        ).order_by(subquery.columns["distance"].asc()).limit(limit)
+        with Session() as sess:
+            results = [[r[0], r[1]] for r in sess.execute(query).all()]
+            return results
+
 
 class SQLARelationship(SQLAElement):
     __tablename__ = "relationships"
@@ -63,8 +87,11 @@ class OpenAITextEmbedding3Small(SQLABase):
     embedding: Mapped[List[float]] = mapped_column(Vector(1536))
 
 __embedding_class_to_sql: Dict[str, Type] = {
-        "openai-text-embedding-3-small": OpenAITextEmbedding3Small
+        "text-embedding-3-small": OpenAITextEmbedding3Small
     }
+
+def get_embedding_table_class_by_key(embedding_key: str) -> Type[SQLABase]:
+    return __embedding_class_to_sql[embedding_key]
 
 def _element_to_sql_object(element: GraphElement) -> SQLAElement:
     if isinstance(element, GraphNode):
@@ -107,7 +134,8 @@ def sql_to_element(obj: SQLAElement) -> GraphElement:
 
 
 def embedding_to_sql(element: GraphElement, embedding_key: str) -> SQLABase:
-    obj = __embedding_class_to_sql[embedding_key]()
+    obj = get_embedding_table_class_by_key(embedding_key)()
     obj.node_id = element.id
     obj.embedding = element.embeddings[embedding_key]
     return obj
+

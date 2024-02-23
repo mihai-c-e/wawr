@@ -71,3 +71,5 @@ class Graph:
                 from_node.add_relationship(rel)
             if to_node is not None:
                 to_node.add_relationship(rel)
+
+
