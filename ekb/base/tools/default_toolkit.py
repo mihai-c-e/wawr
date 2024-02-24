@@ -1,9 +1,10 @@
 import logging
+from threading import Thread
 from typing import List
 from datetime import datetime
 from pydantic import BaseModel
 from jinja2 import Template
-from ekb.base.tools.sql_interface import SQLAElement, sql_to_element_list, persist_graph_objects
+from ekb.base.tools.sql_interface import SQLAElement, sql_to_element_list, persist_graph_elements
 from ekb.base.models import GraphElement, GraphNode, GraphRelationship
 from ekb.base.topic import TopicSolverBase, TopicNode, TopicMatchRelationship, TopicMeta
 from ekb.base.tools.openai_models import create_embeddings, query_model
@@ -114,19 +115,15 @@ def get_answer(node: TopicNode, references: List[TopicReference]):
     response = query_model(query=prompt, model=node.get_topic_meta().model)
     return response
 
-def topic_solver_v1(topic: str, meta: TopicMeta) -> None:
+def _topic_solver_v1(node: TopicNode) -> TopicNode:
     try:
-        node = create_topic_node(topic=topic, meta=meta)
-        meta.log_history.append("Initialised")
-        meta.status = "Calculating embeddings"
-        persist_graph_objects([node])
-
+        meta = node.get_topic_meta()
         add_element_embedding(element=node, embedding_key=meta.embedding_key)
         meta.status = "Retrieving similar elements"
         meta.progress = 0.1
         meta.log_history.append("Calculated embeddings")
         node.update_topic_meta(meta)
-        persist_graph_objects([node], merge=True)
+        persist_graph_elements(elements_merge=[node])
 
         relationships = create_similarity_relationships(node=node, embedding_key=meta.embedding_key)
         meta.subgraph_ids = [rel.id for rel in relationships]
@@ -135,8 +132,7 @@ def topic_solver_v1(topic: str, meta: TopicMeta) -> None:
         meta.progress = 0.5
         meta.log_history.append("Retrieved subgraph")
         node.update_topic_meta(meta)
-        to_persist = relationships + [node,]
-        persist_graph_objects(to_persist, merge=True)
+        persist_graph_elements(elements_merge=[node], elements_add=relationships)
 
         reference_nodes = identify_reference_nodes(node=node, subgraph=relationships)
         references = create_references(node=node, reference_nodes=reference_nodes)
@@ -146,7 +142,7 @@ def topic_solver_v1(topic: str, meta: TopicMeta) -> None:
         meta.progress = 0.7
         meta.log_history.append("Retrieved references")
         node.update_topic_meta(meta)
-        persist_graph_objects([node], merge=True)
+        persist_graph_elements(elements_merge=[node])
 
         response = get_answer(node=node, references=references)
         meta.response = response[0]
@@ -155,10 +151,35 @@ def topic_solver_v1(topic: str, meta: TopicMeta) -> None:
         meta.progress = 1.0
         meta.log_history.append("Answer received")
         node.update_topic_meta(meta)
-        persist_graph_objects([node], merge=True)
+        persist_graph_elements(elements_merge=[node])
         return node
+    except Exception as ex:
+        meta.status = "Error"
+        meta.progress = 0.0
+        meta.log_history.append(f"Error: {str(ex)}")
+        raise
 
+def topic_solver_v1(topic: str = None, meta: TopicMeta = None, node: TopicNode = None, in_thread: bool = False) -> TopicNode:
+    if (topic is None or meta is None) and node is None:
+        raise ValueError("Either topic and meta, or node must be provided")
+    try:
+        if node is None:
+            node = create_topic_node(topic=topic, meta=meta)
+            meta.log_history.append("Initialised")
+            meta.status = "Calculating embeddings"
+            node.update_topic_meta(meta)
+            persist_graph_elements(elements_add=[node])
 
+        if not in_thread:
+            return _topic_solver_v1(node)
+        else:
+            thread = Thread(
+                name=f"Topic solver for node {node.id}: {node.text}",
+                target=_topic_solver_v1,
+                kwargs={"node": node},
+            )
+            thread.start()
+            return node
     except Exception as ex:
         meta.status = "Error"
         meta.progress = 0.0

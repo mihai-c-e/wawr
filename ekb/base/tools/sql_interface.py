@@ -3,8 +3,8 @@ import logging
 import os
 from typing import List, Type, Dict
 
-from sqlalchemy import String, JSON, ForeignKey, create_engine, select, alias, Column, false, Numeric, Float, func, case
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker, aliased, Query
+from sqlalchemy import String, JSON, ForeignKey, create_engine, select, case
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, scoped_session, aliased, Query
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
 
@@ -18,7 +18,7 @@ _db_port = os.environ["DATA_DB_PORT"]
 _db = os.environ["DATA_DB"]
 _con_str = f'postgresql+psycopg2://{_db_usr}:{_db_pwd}@{_db_srv}:{_db_port}/{_db}'
 engine = create_engine(_con_str)
-Session = sessionmaker(engine)
+Session = scoped_session(sessionmaker(engine))
 
 
 def create_all():
@@ -128,6 +128,14 @@ def element_to_sql(element: GraphElement) -> SQLAElement:
     obj.type_id = type(element).__name__
     return obj
 
+def elements_to_sql(elements: List[GraphElement]) -> List[SQLAElement]:
+    sql_objects = list()
+    for e in elements:
+        sql_objects.append(element_to_sql(e))
+        for embedding_key in e.embeddings.keys():
+            sql_objects.append(embedding_to_sql(e, embedding_key))
+    return sql_objects
+
 def sql_to_element(obj: SQLAElement) -> GraphElement:
     #obj_class = get_subclass_by_name(GraphNode, obj.type_id)
     pass_kwargs = {
@@ -152,20 +160,21 @@ def embedding_to_sql(element: GraphElement, embedding_key: str) -> SQLABase:
     obj.embedding = element.embeddings[embedding_key]
     return obj
 
-def persist_graph_objects(objects: List[GraphElement], merge: bool = False) -> None:
-    sql_objects = list()
-    for obj in objects:
-        sql_objects.append(element_to_sql(obj))
-        for embedding_key in obj.embeddings.keys():
-            sql_objects.append(embedding_to_sql(obj, embedding_key))
-    persist_sql_objects(sql_objects, merge=merge)
+def persist_graph_elements(elements_add: List[GraphElement] = None, elements_merge: List[GraphElement] = None) -> None:
+    if elements_add is None and elements_merge is None:
+        raise ValueError("Object lists not provided")
+    persist_sql_objects(
+        objects_add = None if elements_add is None else elements_to_sql(elements_add),
+        objects_merge=None if elements_merge is None else elements_to_sql(elements_merge),
+    )
 
-def persist_sql_objects(objects: List[SQLABase], merge: bool = False) -> None:
+def persist_sql_objects(objects_add: List[SQLABase] = None, objects_merge: List[SQLABase] = None) -> None:
+    if objects_add is None and objects_merge is None:
+        raise ValueError("Object lists not provided")
     with Session() as sess:
         with sess.begin():
-            if merge:
-                for obj in objects:
+            if objects_add is not None:
+                sess.add_all(objects_add)
+            if objects_merge is not None:
+                for obj in objects_merge:
                     sess.merge(obj)
-            else:
-                sess.add_all(objects)
-

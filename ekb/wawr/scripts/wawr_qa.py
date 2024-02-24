@@ -11,4 +11,5 @@ if __name__ == '__main__':
     question = "Is GPT 3.5 better than GPT 4?"
     question = "Can language models perform reasoning?"
     meta = TopicMeta(source_id="test", embedding_key="text-embedding-3-small", model="gpt-4-0125-preview", distance_threshold=0.45, limit=1000)
-    topic_solver_v1(topic=question, meta=meta)
+    topic_solver_v1(topic=question, meta=meta, in_thread=True)
+    print("Done")
