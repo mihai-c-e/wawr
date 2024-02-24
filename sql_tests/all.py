@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 load_dotenv('../wawr_ingestion.env')
 
-from ekb.base.openai_models import create_embeddings
-from ekb.base.sql_interface import SQLAElement
+from base.tools.openai_models import create_embeddings
+from base.tools.sql_interface import SQLAElement
 
 def test_embed_and_find_by_similarity():
     data = ["what do we know about gpt-4's performance?"]

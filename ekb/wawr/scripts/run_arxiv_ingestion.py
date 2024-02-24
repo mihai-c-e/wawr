@@ -5,9 +5,8 @@ from sqlalchemy import select
 from wawr.models import PaperAbstract
 
 import logging
-import pandas as pd
-from ekb.wawr.scripts.workers import load_json_source, ingested_data_to_nodes, extract_facts_from_one
-from ekb.base.sql_interface import SQLABase, element_to_sql, embedding_to_sql, Session, SQLAElement
+from ekb.wawr.scripts.workers import load_json_source, ingested_data_to_nodes
+from base.tools.sql_interface import element_to_sql, Session, SQLAElement
 
 def get_last_ingested_abstract_id():
     with Session() as sess:

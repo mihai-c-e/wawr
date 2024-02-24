@@ -10,11 +10,11 @@ from sqlalchemy import select
 from jinja2 import Template
 from pydantic import BaseModel
 from ekb.wawr.models import PaperAbstract
-from ekb.base.openai_models import query_model
+from base.tools.openai_models import query_model
 import logging
 from multiprocessing.pool import ThreadPool
 import threading
-from ekb.base.sql_interface import SQLABase, element_to_sql, embedding_to_sql, Session, SQLAElement, SQLARelationship, sql_to_element
+from base.tools.sql_interface import element_to_sql, Session, SQLAElement, sql_to_element
 from ekb.utils import read_json
 
 sql_lock = threading.Lock()
@@ -114,7 +114,7 @@ def _extracted_object_to_nodes_and_relationship(abstract_node: GraphNode, fact_o
     fact_node = GraphNode(
         text=fact_obj.fact,
         date=abstract_node.date,
-        meta=abstract_node.meta,
+        meta=fact_meta,
         type_id="fact",
         status=''
     )

@@ -3,7 +3,7 @@ import logging
 import os
 from typing import List, Type, Dict
 
-from sqlalchemy import String, JSON, ForeignKey, create_engine, select, alias, Column
+from sqlalchemy import String, JSON, ForeignKey, create_engine, select, alias, Column, false, Numeric, Float, func, case
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker, aliased, Query
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
@@ -50,11 +50,20 @@ class SQLAElement(SQLABase):
             with_vector: List[float],
             distance_threshold: float,
             embedding_key: str,
-            limit: int
+            limit: int,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            type_ids: List[str] = None
     ) -> List[SQLAElement]:
         emb_table = get_embedding_table_class_by_key(embedding_key)
-        subquery = select(SQLAElement, emb_table, emb_table.embedding.cosine_distance(with_vector).label("distance"))\
-            .select_from(SQLAElement).join(emb_table, onclause=SQLAElement.id==emb_table.node_id).subquery()
+        subquery = select(
+            SQLAElement,
+            emb_table,
+            case(
+                (with_string is not None and with_string != '' and SQLAElement.text.ilike(with_string+'%'), 0.0),
+                else_= emb_table.embedding.cosine_distance(with_vector)
+            ).label("distance")
+        ).select_from(SQLAElement).join(emb_table, onclause=SQLAElement.id==emb_table.node_id).subquery()
         g = aliased(SQLAElement, subquery)
         e = aliased(emb_table, subquery)
         query = Query(
@@ -62,7 +71,9 @@ class SQLAElement(SQLABase):
             subquery.columns["distance"]]
         ).select_from(subquery).where(
             (subquery.columns["distance"] <= distance_threshold)
-            | (False if with_string is None else g.text.ilike(with_string))
+            & (True if from_date is None else SQLAElement.date >= from_date)
+            & (True if to_date is None else SQLAElement.date <= to_date)
+            & (True if type_ids is None else SQLAElement.type_id.in_(type_ids))
         ).order_by(subquery.columns["distance"].asc()).limit(limit)
         with Session() as sess:
             results = [[r[0], r[1]] for r in sess.execute(query).all()]
@@ -132,10 +143,29 @@ def sql_to_element(obj: SQLAElement) -> GraphElement:
         raise ValueError(f"Unkonwn record type: {obj.record_type}")
     return element
 
+def sql_to_element_list(objects: List[SQLAElement]) -> List[GraphElement]:
+    return [sql_to_element(obj) for obj in objects]
 
 def embedding_to_sql(element: GraphElement, embedding_key: str) -> SQLABase:
     obj = get_embedding_table_class_by_key(embedding_key)()
     obj.node_id = element.id
     obj.embedding = element.embeddings[embedding_key]
     return obj
+
+def persist_graph_objects(objects: List[GraphElement], merge: bool = False) -> None:
+    sql_objects = list()
+    for obj in objects:
+        sql_objects.append(element_to_sql(obj))
+        for embedding_key in obj.embeddings.keys():
+            sql_objects.append(embedding_to_sql(obj, embedding_key))
+    persist_sql_objects(sql_objects, merge=merge)
+
+def persist_sql_objects(objects: List[SQLABase], merge: bool = False) -> None:
+    with Session() as sess:
+        with sess.begin():
+            if merge:
+                for obj in objects:
+                    sess.merge(obj)
+            else:
+                sess.add_all(objects)
 

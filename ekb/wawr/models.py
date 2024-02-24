@@ -15,4 +15,3 @@ class PaperAbstract(GraphNode):
 
     def __init__(self, text: str, **kwargs):
         super().__init__(text, **kwargs)
-

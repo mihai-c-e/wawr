@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv('../../../wawr_ingestion.env')
 
 import logging
-from base.sql_interface import Session
+from base.tools.sql_interface import Session
 from neo4j import GraphDatabase
 from jinja2 import Template
 

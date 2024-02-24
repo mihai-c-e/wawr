@@ -7,16 +7,11 @@ from ekb.base.models import GraphNode, GraphRelationship
 load_dotenv('../../../wawr_ingestion.env')
 
 from sqlalchemy import select
-from jinja2 import Template
 from pydantic import BaseModel
-from ekb.wawr.models import PaperAbstract
-from ekb.base.openai_models import query_model, create_embeddings
+from base.tools.openai_models import create_embeddings
 import logging
-from multiprocessing.pool import ThreadPool
 import threading
-from ekb.base.sql_interface import SQLABase, element_to_sql, embedding_to_sql, Session, SQLAElement, SQLARelationship, \
-    sql_to_element, OpenAITextEmbedding3Small, get_embedding_table_class_by_key
-from ekb.utils import read_json
+from base.tools.sql_interface import element_to_sql, embedding_to_sql, Session, SQLAElement, sql_to_element, OpenAITextEmbedding3Small, get_embedding_table_class_by_key
 
 sql_lock = threading.Lock()
 openai_api_lock = threading.Lock()
