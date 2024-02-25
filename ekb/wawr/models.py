@@ -7,7 +7,7 @@ class PaperAbstract(GraphNode):
     def from_series(self, source: pd.Series) -> "PaperAbstract":
         source_dict = source.to_dict()
         return PaperAbstract(
-            id = source_dict.pop("id"),
+            id = source_dict.get("id"),
             text=source_dict.pop("abstract"),
             date=source_dict.pop("date"),
             meta=source_dict

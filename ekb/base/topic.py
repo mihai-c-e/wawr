@@ -3,6 +3,7 @@ from typing import Callable, List, Any, Optional, Dict
 from pydantic import BaseModel
 from ekb.base.models import GraphNode, GraphRelationship
 
+_date_format = '%d-%m-%Y %H:%M:%SZ'
 class TopicMeta(BaseModel):
     source_id: str
     progress: float = 0.0
@@ -10,18 +11,44 @@ class TopicMeta(BaseModel):
     distance_threshold: float = 0.7
     subgraph_ids: List[str] = list()
     reference_ids: List[str] = list()
+    reference_scores: List[float] = list()
     log_history: List[str] = list()
     embedding_key: str
     model: str
     limit: int = 1000
-    from_date: Optional[datetime] = None
-    to_date: Optional[datetime] = None
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
     response: str = ""
     usage: Optional[Dict[str, Any]] = None
+    user_message: str = ""
+
+    @classmethod
+    def date_to_str(cls, d: datetime):
+        return d.strftime(_date_format)
+
+    def get_from_date(self) -> datetime:
+        if self.from_date is None or self.from_date == "":
+            return None
+        return datetime.strptime(self.from_date, _date_format)
+
+    def set_from_date(self, d: datetime):
+        self.from_date = d.strftime(_date_format)
+
+    def get_to_date(self) -> datetime:
+        if self.to_date is None or self.to_date == "":
+            return None
+        return datetime.strptime(self.to_date, _date_format)
+
+    def set_to_date(self, d: datetime):
+        self.to_date = d.strftime(_date_format)
 
 class TopicNode(GraphNode):
-    def __init__(self, text: str, topic_meta: TopicMeta):
-        super().__init__(text, meta=dict(topic_meta), type_id="Topic")
+    def __init__(self, text: str = None, topic_meta: TopicMeta = None, **kwargs):
+        if 'meta' in kwargs and topic_meta is not None:
+            raise ValueError("Provide either topic_meta as TopicMeta or meta as dict")
+        meta = dict(topic_meta) if topic_meta is not None else kwargs.pop('meta')
+        kwargs.pop('type_id', None)
+        super().__init__(text, meta=meta, type_id="Topic", **kwargs)
 
     def get_topic_meta(self) -> TopicMeta:
         return TopicMeta.model_validate(self.meta)

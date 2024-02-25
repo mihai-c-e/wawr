@@ -1,13 +1,15 @@
 from __future__ import annotations
 import logging
 import os
-from typing import List, Type, Dict
+from typing import List, Type, Dict, Tuple
 
-from sqlalchemy import String, JSON, ForeignKey, create_engine, select, case
+from sqlalchemy import String, ForeignKey, create_engine, select, case
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, scoped_session, aliased, Query
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
 
+from ekb.base.topic import TopicNode
 from ekb.base.models import GraphElement, GraphNode, GraphRelationship
 from ekb.utils import get_subclass_by_name
 
@@ -27,6 +29,13 @@ def create_all():
 
 class SQLABase(DeclarativeBase):
     pass
+
+_registered_graph_element_types = {
+    'TopicNode': TopicNode
+}
+
+def _get_class_for_element_type(element_type: str):
+    return _registered_graph_element_types.get(element_type, None)
 
 class SQLAElement(SQLABase):
     __tablename__ = "elements"
@@ -56,14 +65,19 @@ class SQLAElement(SQLABase):
             type_ids: List[str] = None
     ) -> List[SQLAElement]:
         emb_table = get_embedding_table_class_by_key(embedding_key)
-        subquery = select(
+        subquery = (select(
             SQLAElement,
             emb_table,
             case(
                 (with_string is not None and with_string != '' and SQLAElement.text.ilike(with_string+'%'), 0.0),
                 else_= emb_table.embedding.cosine_distance(with_vector)
             ).label("distance")
-        ).select_from(SQLAElement).join(emb_table, onclause=SQLAElement.id==emb_table.node_id).subquery()
+        ).select_from(SQLAElement).join(emb_table, onclause=SQLAElement.id==emb_table.node_id)
+        .where(
+            (True if from_date is None else ((SQLAElement.date >= from_date) | (SQLAElement.date == None)))
+            & (True if to_date is None else ((SQLAElement.date <= to_date) | (SQLAElement.date == None)))
+            & (True if type_ids is None else SQLAElement.type_id.in_(type_ids))
+        ).subquery())
         g = aliased(SQLAElement, subquery)
         e = aliased(emb_table, subquery)
         query = Query(
@@ -71,9 +85,7 @@ class SQLAElement(SQLABase):
             subquery.columns["distance"]]
         ).select_from(subquery).where(
             (subquery.columns["distance"] <= distance_threshold)
-            & (True if from_date is None else SQLAElement.date >= from_date)
-            & (True if to_date is None else SQLAElement.date <= to_date)
-            & (True if type_ids is None else SQLAElement.type_id.in_(type_ids))
+
         ).order_by(subquery.columns["distance"].asc()).limit(limit)
         with Session() as sess:
             results = [[r[0], r[1]] for r in sess.execute(query).all()]
@@ -142,11 +154,12 @@ def sql_to_element(obj: SQLAElement) -> GraphElement:
         "id": obj.id, "type_id": obj.type_id, "text": obj.text, "meta": obj.meta, "date": obj.date,
         "created_date": obj.created_date, "status": obj.status
     }
-    if isinstance(obj, SQLAElement):
-        element = GraphNode.model_validate(pass_kwargs)
-    elif isinstance(obj, SQLARelationship):
+    clazz = _get_class_for_element_type(obj.type_id)
+    if isinstance(obj, SQLARelationship):
         pass_kwargs.update({"from_node_id": obj.from_node_id, "to_node_id": obj.to_node_id})
-        element = GraphRelationship.model_validate(pass_kwargs)
+        element = (clazz or GraphRelationship).model_validate(pass_kwargs)
+    elif isinstance(obj, SQLAElement):
+        element = (clazz or GraphNode).model_validate(pass_kwargs)
     else:
         raise ValueError(f"Unkonwn record type: {obj.record_type}")
     return element
@@ -173,8 +186,40 @@ def persist_sql_objects(objects_add: List[SQLABase] = None, objects_merge: List[
         raise ValueError("Object lists not provided")
     with Session() as sess:
         with sess.begin():
-            if objects_add is not None:
-                sess.add_all(objects_add)
             if objects_merge is not None:
                 for obj in objects_merge:
                     sess.merge(obj)
+            if objects_add is not None:
+                objects_add.sort(key=lambda x: 1 if isinstance(x, SQLARelationship) else 0)
+                sess.add_all(objects_add)
+
+
+def get_element_by_id(id: str) -> GraphElement | None:
+    with Session() as sess:
+        query = select(SQLAElement).where(SQLAElement.id == id)
+        object = sess.execute(query).first()
+    if object is None:
+        return None
+    element = sql_to_element(object[0])
+    return element
+
+def get_elements_by_ids(ids: List[str]) -> List[GraphElement]:
+    if ids is None or len(ids) == 0:
+        return list()
+    query = select(SQLAElement).where(
+        (SQLAElement.id.in_(ids))
+    ).order_by(SQLAElement.date.desc())
+    with Session() as sess:
+        results_sql = [row[0] for row in sess.execute(query)]
+        results = sql_to_element_list(results_sql)
+    return results
+
+def get_topic_node_and_subgraph(id: str) -> Tuple[GraphElement, List[GraphElement]] | None:
+    topic_node = get_element_by_id(id)
+    if topic_node is None:
+        raise ValueError(f"Node id {id} not found")
+    if not isinstance(topic_node, TopicNode):
+        raise ValueError(f"Node id {id} is not a topic node")
+    meta = topic_node.get_topic_meta()
+    subgraph = get_elements_by_ids(meta.subgraph_ids)
+    return topic_node, subgraph
