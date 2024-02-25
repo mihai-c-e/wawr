@@ -133,15 +133,15 @@ def get_answer(node: TopicNode, references: List[TopicReference]):
     This is what we know:
     {{ references_as_text }}
     
-    Based on the references above, infer an answer to the following ask: 
+    Based on the facts stated above, infer an answer to the following ask: 
     "{{ question }}".
     
-    Start with what is explicitly stated in references regarding the ask, then try to infer a summary.
+    Start with what is explicitly stated in the given facts that is relevant to the ask, then try to infer a discussion and conclusions.
     Format your answer using html tags, ready to insert as-is into a html page, using formatting, styling and whatever 
-    else you consider necessary. Provide index references in text in 
-    [1][2] format, referring to the references above. Do not output any references yourself. 
-    Be thorough and informative in your response, trying to take into account every relevant reference.
-    If the references are not relevant for the ask, say so.
+    else you consider necessary. Quote the facts above in your answer, in 
+    [1][2] format. Do not list references, only use numbers in your answer to refer to the facts. 
+    Write in journalistic style and be thorough and informative in your response, trying to take into account every relevant fact.
+    If the facts are not relevant for the ask, say so. Do not write references or bibliography at the end
     """
     prompt = Template(prompt_template).render(
         references_as_text = references_to_prompt_text(references),
