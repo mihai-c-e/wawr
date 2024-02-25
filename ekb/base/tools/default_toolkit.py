@@ -133,14 +133,15 @@ def get_answer(node: TopicNode, references: List[TopicReference]):
     This is what we know:
     {{ references_as_text }}
     
-    Based on the references above, infer an answer to the following question: 
+    Based on the references above, infer an answer to the following ask: 
     "{{ question }}".
     
-    Start with what is explicitly stated in references regarding the question, then try to infer a summary.
-    Format your answer using html tags, ready to insert as-is into a html page. Provide index references in text in 
-    [1][2] format. Be thorough in your response, trying to take into account every relevant reference - but,
-    if there are too many references, warn the user that the answer might be incomplete.
-     
+    Start with what is explicitly stated in references regarding the ask, then try to infer a summary.
+    Format your answer using html tags, ready to insert as-is into a html page, using formatting, styling and whatever 
+    else you consider necessary. Provide index references in text in 
+    [1][2] format, referring to the references above. Do not output any references yourself. 
+    Be thorough and informative in your response, trying to take into account every relevant reference.
+    If the references are not relevant for the ask, say so.
     """
     prompt = Template(prompt_template).render(
         references_as_text = references_to_prompt_text(references),

@@ -16,6 +16,7 @@ class GraphElement(BaseModel):
     text: str
     date: Optional[datetime] = None
     type_id: str
+    source_id: Optional[str] = None
     embeddings: Dict[str, List[float]] = dict()
 
     def __init__(self, **kwargs):

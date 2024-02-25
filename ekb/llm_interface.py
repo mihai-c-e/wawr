@@ -28,8 +28,6 @@ from py2neo import Graph, NodeMatcher, RelationshipMatcher
 from ekb.utils import check_env
 import logging
 
-os.environ['OPENAI_API'] = "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"
-
 class ChatGPTConnection:
     model_name: str
     def __init__(self, model_name: str = 'gpt-3.5-turbo-16k-0613'):

@@ -43,6 +43,7 @@ class SQLAElement(SQLABase):
     record_type: Mapped[str]
     id: Mapped[str] = mapped_column(primary_key=True)
     type_id: Mapped[str]
+    source_id: Mapped[str]
     meta: Mapped[dict] = mapped_column(JSON())
     text: Mapped[str]
     created_date: Mapped[datetime]
@@ -132,6 +133,7 @@ def _element_to_sql_object(element: GraphElement) -> SQLAElement:
 def element_to_sql(element: GraphElement) -> SQLAElement:
     obj = _element_to_sql_object(element)
     obj.id = element.id
+    obj.source_id = element.source_id
     obj.meta = element.meta
     obj.text = element.text
     obj.date = element.date
@@ -152,7 +154,7 @@ def sql_to_element(obj: SQLAElement) -> GraphElement:
     #obj_class = get_subclass_by_name(GraphNode, obj.type_id)
     pass_kwargs = {
         "id": obj.id, "type_id": obj.type_id, "text": obj.text, "meta": obj.meta, "date": obj.date,
-        "created_date": obj.created_date, "status": obj.status
+        "created_date": obj.created_date, "status": obj.status, "source_id": obj.source_id
     }
     clazz = _get_class_for_element_type(obj.type_id)
     if isinstance(obj, SQLARelationship):
