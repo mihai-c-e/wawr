@@ -88,20 +88,22 @@ def limit_references(
         new_refs = refs[:limit]
         date_to = new_refs[0][0].date
         date_from = new_refs[-1][0].date
+        new_refs.sort(key=lambda x: x[1])
         logging.info(f"Reduced to {limit} references between "
                      f"{date_from.strftime('%Y-%m-%d')} and {date_to.strftime('%Y-%m-%d')}")
-        meta.user_message += (f"Your search returned too many elements from the knowledge graph. "
-                              f"I reduced them to get 200 references by "
-                              f"setting the retrieval period between {date_from.strftime('%d %b %Y')} "
+        meta.user_message += (f"There are too many data points in the knowledge graph matching your question with the selected parameters. "
+                              f"I limited my answer to take into account 200 references "
+                              f"between {date_from.strftime('%d %b %Y')} "
                               f"and {date_to.strftime('%d %b %Y')}. Try to increase precision "
                               f"to get less records or repeat the question "
                               f"on a different interval."
         )
-        reference_nodes = [x[0] for x in refs[:limit]]
-        reference_scores = [x[1] for x in refs]
+        reference_nodes = [x[0] for x in new_refs]
+        reference_scores = [x[1] for x in new_refs]
+
     elif len(reference_nodes) > 50:
-        meta.user_message = ("We identified a large nubmer of references. Please note that "
-                             "some of them might be ignored by the model when generating an answer.")
+        meta.user_message = ("We identified a large number of references. Sometimes, in such cases, the answer might "
+                             "omit relevant information.")
     return reference_nodes, reference_scores
 
 def create_references(node: TopicNode, reference_nodes: List[GraphElement], reference_scores: List[float]) -> List[TopicReference]:
@@ -140,8 +142,10 @@ def get_answer(node: TopicNode, references: List[TopicReference]):
     Format your answer using html tags, ready to insert as-is into a html page, using formatting, styling and whatever 
     else you consider necessary. Quote the facts above in your answer, in 
     [1][2] format. Do not list references, only use numbers in your answer to refer to the facts. 
-    Write in journalistic style and be thorough and informative in your response, trying to take into account every relevant fact.
-    If the facts are not relevant for the ask, say so. Do not write references or bibliography at the end
+    Write in journalistic style, in British English. Be thorough and informative in your response, trying to take into account every relevant fact.
+    If the facts are not relevant for the ask, say so. Do not write references or bibliography at the end.
+    
+    
     """
     prompt = Template(prompt_template).render(
         references_as_text = references_to_prompt_text(references),
@@ -185,7 +189,7 @@ def _topic_solver_v1(node: TopicNode) -> TopicNode:
         persist_graph_elements(elements_merge=[node])
 
         if len(references) == 0:
-            meta.response = "No data found. Try relaxing the parameters (e.g. larger time interval, or lower precision."
+            meta.response = "No data found. Try relaxing the parameters (e.g. larger time interval, or lower precision)."
             meta.usage = {}
         else:
             response = get_answer(node=node, references=references)
