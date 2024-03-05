@@ -4,6 +4,11 @@ from pydantic import BaseModel
 from ekb.base.models import GraphNode, GraphRelationship
 
 _date_format = '%d-%m-%Y %H:%M:%SZ'
+
+class TopicBreakdown(BaseModel):
+    filter: List[str]
+    questions: List[str]
+
 class TopicMeta(BaseModel):
     source_id: str
     progress: float = 0.0
@@ -21,6 +26,8 @@ class TopicMeta(BaseModel):
     response: str = ""
     usage: Optional[Dict[str, Any]] = None
     user_message: str = ""
+    breakdown: Dict[str, Any] = dict()
+    hypothetical: List[str] = list()
 
     @classmethod
     def date_to_str(cls, d: datetime):

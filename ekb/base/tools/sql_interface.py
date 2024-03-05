@@ -3,7 +3,7 @@ import logging
 import os
 from typing import List, Type, Dict, Tuple
 
-from sqlalchemy import String, ForeignKey, create_engine, select, case
+from sqlalchemy import String, ForeignKey, create_engine, select, case, true
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, scoped_session, aliased, Query
 from pgvector.sqlalchemy import Vector
@@ -56,8 +56,8 @@ class SQLAElement(SQLABase):
     @classmethod
     def find_by_similarity(
             cls,
-            with_string: str,
-            with_vector: List[float],
+            with_strings: List[str],
+            with_vectors: List[List[float]],
             distance_threshold: float,
             embedding_key: str,
             limit: int,
@@ -66,18 +66,27 @@ class SQLAElement(SQLABase):
             type_ids: List[str] = None
     ) -> List[SQLAElement]:
         emb_table = get_embedding_table_class_by_key(embedding_key)
+
+        distance_formula = None
+        for i in range(len(with_strings)):
+            element = (1 - case(
+                (with_strings[i] is not None and with_strings[i] != '' and SQLAElement.text.ilike('%'+with_strings[i]+'%'), 0.0),
+                else_= emb_table.embedding.cosine_distance(with_vectors[i])
+            ))
+            #element = (1 - emb_table.embedding.cosine_distance(with_vectors[i]))
+
+            distance_formula = (element if distance_formula is None else (distance_formula * element))
+
+
         subquery = (select(
             SQLAElement,
             emb_table,
-            case(
-                (with_string is not None and with_string != '' and SQLAElement.text.ilike(with_string+'%'), 0.0),
-                else_= emb_table.embedding.cosine_distance(with_vector)
-            ).label("distance")
+            (1-distance_formula).label("distance")
         ).select_from(SQLAElement).join(emb_table, onclause=SQLAElement.id==emb_table.node_id)
         .where(
-            (True if from_date is None else ((SQLAElement.date >= from_date) | (SQLAElement.date == None)))
-            & (True if to_date is None else ((SQLAElement.date <= to_date) | (SQLAElement.date == None)))
-            & (True if type_ids is None else SQLAElement.type_id.in_(type_ids))
+            (true() if from_date is None else ((SQLAElement.date >= from_date) | (SQLAElement.date == None)))
+            & (true() if to_date is None else ((SQLAElement.date <= to_date) | (SQLAElement.date == None)))
+            & (true() if type_ids is None else SQLAElement.type_id.in_(type_ids))
         ).subquery())
         g = aliased(SQLAElement, subquery)
         e = aliased(emb_table, subquery)

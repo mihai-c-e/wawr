@@ -1,12 +1,14 @@
+import json
 import logging
+import numpy as np
 from threading import Thread
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
 from jinja2 import Template
 from ekb.base.tools.sql_interface import SQLAElement, sql_to_element_list, persist_graph_elements
 from ekb.base.models import GraphElement, GraphNode, GraphRelationship
-from ekb.base.topic import TopicSolverBase, TopicNode, TopicMatchRelationship, TopicMeta
+from ekb.base.topic import TopicSolverBase, TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown
 from ekb.base.tools.openai_models import create_embeddings, query_model, moderate_text, InappropriateContentException
 
 
@@ -62,6 +64,65 @@ def create_similarity_relationships(node: TopicNode, embedding_key: str) -> List
             relationships.append(rel)
     return relationships
 
+def create_similarity_relationships_with_entities(node: TopicNode, entities: List[str], embedding_key: str) -> List[TopicMatchRelationship]:
+    logging.info(f"Finding similar elements for node {node.id}: {node.text[:100]}")
+    topic_meta = node.get_topic_meta()
+    embeddings = create_embeddings(data=entities, model=embedding_key)
+    similar_elements_sql = SQLAElement.find_by_similarity(
+        with_strings=entities,
+        with_vectors=embeddings,
+        distance_threshold=topic_meta.distance_threshold,
+        embedding_key=topic_meta.embedding_key,
+        limit=topic_meta.limit * 3,
+        from_date=topic_meta.get_from_date(),
+        to_date=topic_meta.get_to_date(),
+        type_ids=["Fact", "PaperAbstract"]
+    )
+    similar_elements = sql_to_element_list([e[0] for e in similar_elements_sql])
+    scores = [e[1] for e in similar_elements_sql]
+    logging.info(f"Found {len(similar_elements)} similar elements for node {node.id}: {node.text[:100]}")
+    relationships = list()
+    for i, element in enumerate(similar_elements):
+        if isinstance(element, GraphNode):
+            rel = TopicMatchRelationship(
+                from_node=node,
+                to_node=element,
+                score=scores[i],
+                match_type="cosine_similarity"
+            )
+            relationships.append(rel)
+    return relationships
+
+def create_similarity_relationships_with_hypothetical(node: TopicNode, hypothetical: List[str], embedding_key: str) -> List[TopicMatchRelationship]:
+    logging.info(f"Finding similar elements for node {node.id}: {node.text[:100]}")
+    topic_meta = node.get_topic_meta()
+    embeddings = create_embeddings(data=hypothetical, model=embedding_key)
+    embedding = np.mean(embeddings, axis=0)
+    similar_elements_sql = SQLAElement.find_by_similarity(
+        with_strings=hypothetical[:1],
+        with_vectors=[embedding],
+        distance_threshold=topic_meta.distance_threshold,
+        embedding_key=topic_meta.embedding_key,
+        limit=topic_meta.limit * 3,
+        from_date=topic_meta.get_from_date(),
+        to_date=topic_meta.get_to_date(),
+        type_ids=["Fact", "PaperAbstract", "Entity"]
+    )
+    similar_elements = sql_to_element_list([e[0] for e in similar_elements_sql])
+    scores = [e[1] for e in similar_elements_sql]
+    logging.info(f"Found {len(similar_elements)} similar elements for node {node.id}: {node.text[:100]}")
+    relationships = list()
+    for i, element in enumerate(similar_elements):
+        if isinstance(element, GraphNode):
+            rel = TopicMatchRelationship(
+                from_node=node,
+                to_node=element,
+                score=scores[i],
+                match_type="cosine_similarity"
+            )
+            relationships.append(rel)
+    return relationships
+
 def identify_reference_nodes(node: TopicNode, subgraph: List[GraphElement]) -> Tuple[List[GraphElement], List[float]]:
     logging.info(f"Selecting references from subgraph for node {node.id}: {node.text[:100]}")
     references_list = list()
@@ -82,7 +143,16 @@ def limit_references(
     limit = meta.limit
     if len(reference_nodes) > limit:
         logging.info(f"Reducing references from {len(reference_nodes)} to {limit}")
-        refs = list(zip(reference_nodes, reference_scores))
+        reference_nodes = reference_nodes[:limit]
+        reference_scores = reference_scores[:limit]
+        logging.info(f"Reduced to {limit} references ")
+        meta.user_message += (
+            f"There are too many data points in the knowledge graph matching your question with the selected parameters. "
+            f"I limited my answer to take into account only the top {limit} references. Try to increase precision "
+            f"to get less records or repeat the question "
+            f"on a different interval."
+            )
+        """refs = list(zip(reference_nodes, reference_scores))
         refs.sort(key=lambda x: x[0].date)
         refs = refs[::-1]
         new_refs = refs[:limit]
@@ -99,7 +169,7 @@ def limit_references(
                               f"on a different interval."
         )
         reference_nodes = [x[0] for x in new_refs]
-        reference_scores = [x[1] for x in new_refs]
+        reference_scores = [x[1] for x in new_refs]"""
 
     elif len(reference_nodes) > 50:
         meta.user_message = ("We identified a large number of references. Sometimes, in such cases, the answer might "
@@ -132,27 +202,91 @@ def references_to_prompt_text(references: List[TopicReference]) -> str:
 
 def get_answer(node: TopicNode, references: List[TopicReference]):
     prompt_template = """
-    This is what we know:
-    {{ references_as_text }}
+This is a set of reference extracts from research papers, ordered by relevance:
+{{ references_as_text }}
     
-    Based on the facts stated above, infer an answer to the following ask: 
-    "{{ question }}".
+Based on the knowledge from the references above, infer an answer as complete as possible to the following ask: "{{ question }}".
     
-    Start with what is explicitly stated in the given facts that is relevant to the ask, then try to infer a discussion and conclusions.
-    Format your answer using html tags, ready to insert as-is into a html page, using formatting, styling and whatever 
-    else you consider necessary. Quote the facts above in your answer, in 
-    [1][2] format. Do not list references, only use numbers in your answer to refer to the facts. 
-    Write in journalistic style, in British English. Be thorough and informative in your response, trying to take into account every relevant fact.
-    If the facts are not relevant for the ask, say so. Do not write references or bibliography at the end.
-    
-    
-    """
+Address what is explicitly stated in the given references, then try to infer a conclusion. Do not output anything after the conclusion. Format the text using html tags, ready to insert as-is into a html page, using text formatting. Quote the facts above in your answer in [1][2] format. Do not list references, only use numbers in your answer to refer to the facts. Write in concise style, in British English, but be very thorough take into account all relevant references. If the references are not relevant for the ask, say so. Do not write references or bibliography at the end. Do not write references, only insert indexes towards given references.
+
+"""
     prompt = Template(prompt_template).render(
         references_as_text = references_to_prompt_text(references),
         question = node.text
     )
     response = query_model(query=prompt, model=node.get_topic_meta().model)
     return response
+
+def break_down_question(question: str, model: str) -> TopicBreakdown:
+    prompt_template = """
+    Answer with json and only json as per below:
+    For question: "Which language model performs best at code writing?", your output should be:
+    {
+        "filter": ["code generation"],
+        "questions":[ 
+            "What is the research on code generation with language models?",
+            "Output a table of benchmark results for code generation with language models",
+            "Which language model performs best at code writing?"
+        ]
+    }
+    
+    For question: "How to increase retrieval precision in retrieval-augmented generation?", your output should be:
+    {
+        "filter": ["retrieval augmented generation"],
+        "questions": [
+            "What is the research on retrieval augmented generation?",
+            "How to increase retrieval precision in retrieval-augmented generation? "
+        ]
+    }    
+    
+    For question: "Which model is better between GPT 3.5 and Mixtral?", your output should be:
+    {
+        "filter": ["comparison", "GPT 3.5", "Mixtral"],
+        "questions": [
+            "Are there benchmarks that include both GPT 3.5 and Mixtral?",
+            "Which model is better between GPT 3.5 and Mixtral?"
+        ]
+    }    
+    
+    For question: "Can language models play chess?", your output should be:
+    {
+        "filter": ["chess"],
+        "questions": [
+            "Can language models play chess?"
+        ]
+    }    
+    For question: "What games can language models play?", your output should be:
+    {
+        "filter": ["model play game"],
+        "questions": [
+            "What games can language models play?"
+        ]
+    }    
+    
+    For question: "{{ question }}", your output is:
+    
+    """
+    prompt = Template(prompt_template).render(question=question)
+    response = query_model(query=prompt, model=model)
+    result = TopicBreakdown.model_validate(read_json(response[0]))
+    return result
+
+
+def find_hypothetical_answers(question: str, model: str) -> List[str]:
+    prompt_template = f"""
+        We need to answer the following ask: "{question}".
+        The answer must be based on facts retrieved from a database. The facts are short sentences extracted from 
+        research paper abstracts on language models. Provide at least 40 hypothetical facts that would
+        answer the question, one per row, no bullets or numbers. If the ask does not mention specific entities,
+        do not use any entities in your answer. If entities are mentioned, use them in the hypothetical facts.
+        If the question includes an 'or', make sure to output facts for all variants. 
+        Provide your answer:
+        
+        """
+    prompt = Template(prompt_template).render(question=question)
+    response = query_model(query=prompt, model=model)
+    result = response[0].split('\n')
+    return result
 
 def _topic_solver_v1(node: TopicNode) -> TopicNode:
     try:
@@ -246,6 +380,104 @@ def topic_solver_v1(topic: str = None, meta: TopicMeta = None, node: TopicNode =
         meta.log_history.append(f"Error: {str(ex)}")
         raise
 
+def _topic_solver_v2(node: TopicNode) -> TopicNode:
+    try:
+        meta = node.get_topic_meta()
+
+        moderate_text(node.text)
+        meta.hypothetical = find_hypothetical_answers(node.text, model=meta.model)
+        #meta.breakdown = dict(break_down_question(node.text, model=meta.model))
+        add_element_embedding(element=node, embedding_key=meta.embedding_key)
+        meta.status = "Retrieving"
+        meta.progress = 0.1
+        meta.log_history.append("Calculated embeddings")
+        node.update_topic_meta(meta)
+        persist_graph_elements(elements_merge=[node])
+
+        relationships = create_similarity_relationships_with_hypothetical(
+            node=node,
+            hypothetical=meta.hypothetical,
+            embedding_key=meta.embedding_key,
+        )
+        meta.subgraph_ids = [rel.id for rel in relationships]
+        meta.subgraph_ids.extend(rel.to_node.id for rel in relationships)
+        meta.status = "References"
+        meta.progress = 0.5
+        meta.log_history.append("Retrieved subgraph")
+        node.update_topic_meta(meta)
+        persist_graph_elements(elements_merge=[node], elements_add=relationships)
+
+        reference_nodes, reference_scores = identify_reference_nodes(node=node, subgraph=relationships)
+        reference_nodes, reference_scores = limit_references(meta=meta, reference_nodes=reference_nodes, reference_scores=reference_scores)
+        meta.reference_ids = [n.id for n in reference_nodes]
+        meta.reference_scores = [s for s in reference_scores]
+        references = create_references(node=node, reference_nodes=reference_nodes, reference_scores=reference_scores)
+
+        meta.status = "Answering"
+        meta.progress = 0.7
+        meta.log_history.append("Retrieved references")
+        node.update_topic_meta(meta)
+        persist_graph_elements(elements_merge=[node])
+
+        if len(references) == 0:
+            meta.response = "No data found. Try relaxing the parameters (e.g. larger time interval, or lower precision)."
+            meta.usage = {}
+        else:
+            response = get_answer(node=node, references=references)
+            meta.response = response[0]
+            meta.usage = dict(response[1].usage)
+        meta.status = "Completed"
+        meta.progress = 1.0
+        meta.log_history.append("Answer received")
+        node.update_topic_meta(meta)
+        persist_graph_elements(elements_merge=[node])
+        return node
+    except InappropriateContentException as ex:
+        meta.status = "Error"
+        meta.progress = 0.0
+        meta.log_history.append(f"Error: {str(ex)}")
+        meta.user_message = "Your question was flagged as inappropriate and will not be processed."
+        node.update_topic_meta(meta)
+        persist_graph_elements(elements_merge=[node])
+    except Exception as ex:
+        meta.status = "Error"
+        meta.progress = 0.0
+        meta.log_history.append(f"Error: {str(ex)}")
+        node.update_topic_meta(meta)
+        meta.user_message = ("There was an error processing your request. Please try again."
+                             "If the error persist, we would appreciate your reporting this to "
+                             "contact@wawr.ai (include the link). Thank you.")
+        persist_graph_elements(elements_merge=[node])
+        raise
+
+def topic_solver_v2(topic: str = None, meta: TopicMeta = None, node: TopicNode = None, in_thread: bool = False) -> TopicNode:
+    if (topic is None or meta is None) and node is None:
+        raise ValueError("Either topic and meta, or node must be provided")
+    try:
+        if node is None:
+            node = create_topic_node(topic=topic, meta=meta)
+            meta.log_history.append("Initialised")
+            meta.status = "Embedding"
+            node.update_topic_meta(meta)
+            persist_graph_elements(elements_add=[node])
+
+        if not in_thread:
+            return _topic_solver_v1(node)
+        else:
+            thread = Thread(
+                name=f"Topic solver for node {node.id}: {node.text}",
+                target=_topic_solver_v2,
+                kwargs={"node": node},
+            )
+            thread.start()
+            return node
+    except Exception as ex:
+        meta.status = "Error"
+        meta.progress = 0.0
+        meta.log_history.append(f"Error: {str(ex)}")
+        raise
+
+
 def read_html(s: str) -> str:
     if '```html' in s:
         s = s.split('```html')[1]
@@ -254,3 +486,14 @@ def read_html(s: str) -> str:
     if '```' in s:
         s = s.split('```')[0]
     return s
+
+def read_json(s: str) -> Dict[Any, Any]:
+    if '```json' in s:
+        s = s.split('```json')[1]
+    if 'json```' in s:
+        s = s.split('json```')[1]
+    if '```' in s:
+        s = s.split('```')[0]
+    #s = s.replace("\\", r"\\\\")
+    return json.loads(s)
+
