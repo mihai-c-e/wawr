@@ -1,3 +1,5 @@
+import re
+from functools import partial
 from typing import List, Dict, Tuple
 from uuid import uuid4
 
@@ -9,7 +11,6 @@ load_dotenv('../../../wawr_ingestion.env')
 from sqlalchemy import select
 from jinja2 import Template
 from pydantic import BaseModel
-from ekb.wawr.models import PaperAbstract
 from base.tools.openai_models import query_model
 import logging
 from multiprocessing.pool import ThreadPool
@@ -29,12 +30,11 @@ class _Fact(BaseModel):
     type: str
     fact: str
     citation: str
-    entities: List[_Entity]
 
 def _get_qualifying_abstracts(limit: int = 10) -> List[GraphNode]:
     with (Session() as sess):
         stmt = select(SQLAElement).where(
-            (SQLAElement.type_id == PaperAbstract.__name__) & (~SQLAElement.status.contains('facts'))
+            (SQLAElement.type_id == "abstract") & (~SQLAElement.status.contains('facts'))
         ).order_by(SQLAElement.date.desc()).limit(limit)
         result = sess.execute(stmt).all()
         nodes = [sql_to_element(n[0]) for n in result]
@@ -58,42 +58,43 @@ def _save(master_node: GraphNode, nodes: Dict[Tuple, GraphNode], relationships: 
 
     logging.info(f"Saving complete")
 
-def _get_model_response(abstract_node: GraphNode, max_attempts: int = 5) -> List[_Fact]:
-    logging.info(f"Extracting facts for abstract node {abstract_node.id}/{abstract_node.meta['title']}")
+def _get_model_response(abstract_node: GraphNode, model: str, max_attempts: int = 5) -> List[_Fact]:
+    logging.info(f"Extracting facts for abstract node {abstract_node.id}/{abstract_node.title}")
     str_template = """
         Research paper title: {{ title }}
         Research paper abstract: "
         {{ abstract }}
         "
         Examine the abstract above and create a list of relevant facts,
-        one sentence per fact. Assign a relevant type to each fact, such as: "hypothesis", "premise", "opinion",
-        "contribution", "result", "achievement", "method" or others. Assign to each fact a word-for-word citation 
+        one sentence per fact. Assign a relevant type to each fact, such as: "introduction", "purpose", "method",
+        "result", "conclusion", "achievement" or others. Assign to each fact a word-for-word comprehensive citation 
         from the abstract that justifies the fact. The citation should be large enough to provide context to the reader
-        even without reading the rest of the abstract. Escape the characters in the citation appropriately, by turning
-         \ into \\\\. For each fact, extract the entities mentioned in the fact citation together with their type, such as: "model", "algorithm", "dataset" or others.  
-        Answer in json format as described below. Answer with json and only json. Escape backslash characters appropriately
-        so that your response parses as valid json.
+        even without reading the rest of the abstract.
+        Answer in json format as described below. Answer with json and only json. Escape characters appropriately
+        so that your response parses as valid json when passed to Python json.loads. 
+        Make sure you do not output double quotes or the escape character inside the strings. Ony use double quotes
+        for json formatting.
 
         [{
             "type":"...", "fact":"...", "citation": "...",
-            "entities": [
-                "name": "...",
-                "type": "..."                        
-            ]
         },
         ...
         ]  
         """
     template = Template(str_template)
-    query = template.render(title=abstract_node.meta["title"], abstract=abstract_node.text)
+    text = abstract_node.text.replace("\"", "'").replace("\\", "")
+    query = template.render(title=abstract_node.title, abstract=text)
     attempt = 1
     while True:
         try:
-            response, completion = query_model(query, model="gpt-4-0125-preview")
+            response, completion = query_model(query, model=model)
             with openai_api_lock:
                 for k, v in dict(completion.usage).items():
                     openai_api_usage[k] = openai_api_usage.get(k, 0) + v
                 logging.info(f"OpenAI API usage: {openai_api_usage}")
+            #response = re.sub("\\\\\"", "", response)
+            #response = re.sub("\\(?!\)", "", response)
+           # response = response.replace("\\", "")
             response = read_json(response)
             extracted_objects = [_Fact.model_validate(r) for r in response]
             break
@@ -109,14 +110,17 @@ def _get_model_response(abstract_node: GraphNode, max_attempts: int = 5) -> List
 def _extracted_object_to_nodes_and_relationship(abstract_node: GraphNode, fact_obj: _Fact, nodes: Dict[Tuple, GraphNode], relationships: List[GraphRelationship]) -> None:
     # Add the fact node
     fact_meta = dict(abstract_node.meta)
-    fact_meta["citation"] = fact_obj.citation
     fact_meta["type"] = fact_obj.type
     fact_node = GraphNode(
         text=fact_obj.fact,
         date=abstract_node.date,
         meta=fact_meta,
         type_id="fact",
-        status=''
+        status='',
+        source_id=abstract_node.id,
+        citation=fact_obj.citation,
+        text_type=fact_obj.type,
+        title=abstract_node.title
     )
     nodes[(fact_obj.type, fact_node.id)] = fact_node
     # Add source relationship between fact node and paper abstract
@@ -132,7 +136,7 @@ def _extracted_object_to_nodes_and_relationship(abstract_node: GraphNode, fact_o
     relationships.append(GraphRelationship(
         from_node=fact_node, to_node=fact_type_node, text="is a", type_id="is_a"
     ))
-    for entity in fact_obj.entities:
+    """for entity in fact_obj.entities:
         # Add entity node
         entity_node = GraphNode(id=f"entity:{entity.name}", text=entity.name, type_id="entity")
         nodes[(entity.type, entity_node.id)] = entity_node
@@ -148,13 +152,13 @@ def _extracted_object_to_nodes_and_relationship(abstract_node: GraphNode, fact_o
         # Add the is_a relationship between entity type node and entity node
         relationships.append(GraphRelationship(
             from_node=entity_node, to_node=entity_type_node, text="is a", type_id="is_a"
-        ))
+        ))"""
 
-def _extract_from_one(abstract_node: GraphNode) -> Tuple[Dict[Tuple, GraphNode], List[GraphRelationship]]:
+def _extract_from_one(abstract_node: GraphNode, model: str) -> Tuple[Dict[Tuple, GraphNode], List[GraphRelationship]]:
     global openai_api_lock
     global sql_lock
     global openai_api_usage
-    extracted_objects = _get_model_response(abstract_node, max_attempts=5)
+    extracted_objects = _get_model_response(abstract_node, max_attempts=5, model=model)
     nodes = dict()
     relationships = list()
 
@@ -166,15 +170,18 @@ def _extract_from_one(abstract_node: GraphNode) -> Tuple[Dict[Tuple, GraphNode],
     _save(abstract_node, nodes, relationships)
     return nodes, relationships
 
-def perform_extraction(max_count: int = 20, pool_size: int = 1):
+def perform_extraction( model: str, max_count: int = 20, pool_size: int = 1):
     abstracts = _get_qualifying_abstracts(max_count)
+    extract_from_one_partial = partial(_extract_from_one, model=model)
     pool = ThreadPool(pool_size)
-    pool.map(_extract_from_one, abstracts)
+    pool.map(extract_from_one_partial, abstracts)
     pool.close()
     pool.join()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    perform_extraction(1000, 1)
+    # model="gpt-4-0125-preview"
+    model = "gpt-3.5-turbo-0125"
+    perform_extraction(model=model, max_count=10000, pool_size=50)
     logging.info("Fact extraction done, exiting...")
 

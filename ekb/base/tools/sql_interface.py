@@ -46,9 +46,13 @@ class SQLAElement(SQLABase):
     source_id: Mapped[str]
     meta: Mapped[dict] = mapped_column(JSON())
     text: Mapped[str]
+    citation: Mapped[str]
+    title: Mapped[str]
+    text_type: Mapped[str]
     created_date: Mapped[datetime]
     date: Mapped[datetime] = mapped_column(nullable=True)
     status: Mapped[str]
+
     __mapper_args__ = {
         "polymorphic_identity": "node",
         "polymorphic_on": "record_type"
@@ -114,7 +118,7 @@ class SQLARelationship(SQLAElement):
     }
 
 class OpenAITextEmbedding3Small(SQLABase):
-    __tablename__ = "opneai_text_embedding_3_small"
+    __tablename__ = "openai_text_embedding_3_small"
     key_name: str = __tablename__
     node_id: Mapped[str] = mapped_column(ForeignKey("elements.id"), primary_key=True)
     embedding: Mapped[List[float]] = mapped_column(Vector(1536))
@@ -148,7 +152,11 @@ def element_to_sql(element: GraphElement) -> SQLAElement:
     obj.date = element.date
     obj.created_date = element.created_date
     obj.status = element.status
-    obj.type_id = type(element).__name__
+    obj.type_id = type(element).__name__ if element.type_id is None else element.type_id
+    obj.text_type = element.text_type
+    obj.title = element.title
+    obj.citation = element.citation
+
     return obj
 
 def elements_to_sql(elements: List[GraphElement]) -> List[SQLAElement]:
@@ -163,7 +171,8 @@ def sql_to_element(obj: SQLAElement) -> GraphElement:
     #obj_class = get_subclass_by_name(GraphNode, obj.type_id)
     pass_kwargs = {
         "id": obj.id, "type_id": obj.type_id, "text": obj.text, "meta": obj.meta, "date": obj.date,
-        "created_date": obj.created_date, "status": obj.status, "source_id": obj.source_id
+        "created_date": obj.created_date, "status": obj.status, "source_id": obj.source_id,
+        "text_type": obj.text_type, "citation": obj.citation, "title": obj.title
     }
     clazz = _get_class_for_element_type(obj.type_id)
     if isinstance(obj, SQLARelationship):

@@ -16,7 +16,10 @@ class GraphElement(BaseModel):
     text: str
     date: Optional[datetime] = None
     type_id: str
+    citation: Optional[str] = ""
     source_id: Optional[str] = None
+    title: Optional[str] = None
+    text_type: Optional[str] = None
     embeddings: Dict[str, List[float]] = dict()
 
     def __init__(self, **kwargs):
@@ -28,7 +31,7 @@ class GraphElement(BaseModel):
         )
 
     def __hash__(self):
-        return self.id
+        return self.id.__hash__()
 
 
 class GraphNode(GraphElement):

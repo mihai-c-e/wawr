@@ -40,22 +40,6 @@ def _get_qualifying_nodes(embeddings_table: Type = OpenAITextEmbedding3Small, li
         logging.info(f"Loaded {len(nodes)} nodes")
     return nodes
 
-def _save(master_node: GraphNode, nodes: Dict[Tuple, GraphNode], relationships: List[GraphRelationship]):
-    logging.info(f"Saving {len(nodes)} nodes and {len(relationships)} relationships")
-    with sql_lock:
-        logging.info("Lock acquired")
-        master_node_sql = element_to_sql(master_node)
-        nodes_sql = [element_to_sql(n) for n in nodes.values()]
-        relationships_sql = [element_to_sql(r) for r in relationships]
-        with Session() as sess:
-            with sess.begin():
-                sess.merge(master_node_sql)
-                for node in nodes_sql:
-                    sess.merge(node)
-                sess.add_all(relationships_sql)
-
-    logging.info(f"Saving complete")
-
 def perform_embedding(max_count: int, batch_size: int, embedding_key: str):
     nodes = _get_qualifying_nodes(limit=max_count)
     logging.info(f"Calculating embeddings for {len(nodes)} nodes")

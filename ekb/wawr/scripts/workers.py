@@ -5,8 +5,7 @@ from typing import List
 
 import pandas as pd
 
-from base.models import GraphNode
-from ekb.wawr.models import PaperAbstract
+from ekb.base.models import GraphNode, GraphElement, GraphRelationship
 from jinja2 import Template
 from nltk.tokenize import sent_tokenize
 
@@ -20,9 +19,11 @@ def _prepare_ingested_data(df: pd.DataFrame) -> pd.DataFrame:
     df['abstract'] = df['abstract'].str.replace('\n', ' ')
     return df
 
+
 def _filter_ingested_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df[(df['lm']) & (df["date"].dt.year >= 2014)]
     return df
+
 
 def load_json_source(source_file: str = None):
     source_file = source_file or os.environ["ARXIV_JSON_FILE"]
@@ -41,10 +42,44 @@ def load_json_source(source_file: str = None):
     logging.info(f"Read {df.shape[0]} records from source.")
     return df
 
-def ingested_data_to_nodes(df: pd.DataFrame) -> List[PaperAbstract]:
+
+def abstract_from_series(source: pd.Series) -> GraphNode:
+    source_dict = source.to_dict()
+    return GraphNode(
+        id=source_dict.get("id"),
+        text=source_dict.pop("abstract"),
+        date=source_dict.pop("date"),
+        title=source_dict.pop("title"),
+        meta=source_dict,
+        type_id="abstract"
+    )
+
+
+def ingested_data_to_nodes(df: pd.DataFrame) -> List[GraphElement]:
     if df.shape[0] == 0:
         return list()
-    return df[~df['id'].isna()].apply(lambda x: PaperAbstract.from_series(x), axis=1).to_list()
+    abstract_nodes = df[~df['id'].isna()].apply(lambda x: abstract_from_series(x), axis=1).to_list()
+    elements = list()
+    for abstract_node in abstract_nodes:
+        elements.append(abstract_node)
+        # Add a title node
+        title_node = GraphNode(
+            id=f"title:{abstract_node.id}",
+            text=abstract_node.title,
+            date=abstract_node.date,
+            meta=abstract_node.meta,
+            type_id='title',
+            status='',
+            source_id=abstract_node.id,
+            text_type='title',
+            title=abstract_node.title,
+        )
+        elements.append(title_node)
+        elements.append(GraphRelationship(
+            from_node=title_node, to_node=abstract_node, text="title of", type_id="title_of"
+        ))
+    return elements
+
 
 def extract_facts_from_one(source: GraphNode, prompt: str = None):
     if prompt is None:
@@ -64,9 +99,8 @@ def extract_facts_from_one(source: GraphNode, prompt: str = None):
         
            
         """
-    prompt = Template(prompt).render(title = source.meta["title"], abstract = source.text)
+    prompt = Template(prompt).render(title=source.meta["title"], abstract=source.text)
     llm = ChatGPTConnection(model_name="gpt-4-0125-preview")
     response = llm.query_model(prompt)
     print(response)
     return
-
