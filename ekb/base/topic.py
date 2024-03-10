@@ -75,6 +75,7 @@ class TopicMatchRelationship(GraphRelationship):
             meta["score"] = score
         if match_type is not None:
             meta["match_type"] = match_type
+        kwargs["type_id"] = "similar_to"
         kwargs["meta"] = meta
 
         super().__init__(text="matches", **kwargs)

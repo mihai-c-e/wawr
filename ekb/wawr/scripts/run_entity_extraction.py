@@ -13,11 +13,11 @@ load_dotenv('../../../wawr_ingestion.env')
 from sqlalchemy import select
 from jinja2 import Template
 from pydantic import BaseModel
-from base.tools.openai_models import query_model
+from ekb.base.tools.openai_models import query_model
 import logging
 from multiprocessing.pool import ThreadPool
 import threading
-from base.tools.sql_interface import element_to_sql, Session, SQLAElement, sql_to_element
+from ekb.base.tools.sql_interface import element_to_sql, Session, SQLAElement, sql_to_element
 from ekb.utils import read_json
 
 sql_lock = threading.Lock()

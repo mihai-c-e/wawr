@@ -76,7 +76,7 @@ def create_similarity_relationships_with_entities(node: TopicNode, entities: Lis
         limit=topic_meta.limit * 3,
         from_date=topic_meta.get_from_date(),
         to_date=topic_meta.get_to_date(),
-        type_ids=["Fact", "PaperAbstract"]
+        type_ids=["fact", "abstract", "entity"]
     )
     similar_elements = sql_to_element_list([e[0] for e in similar_elements_sql])
     scores = [e[1] for e in similar_elements_sql]
@@ -106,7 +106,7 @@ def create_similarity_relationships_with_hypothetical(node: TopicNode, hypotheti
         limit=topic_meta.limit * 3,
         from_date=topic_meta.get_from_date(),
         to_date=topic_meta.get_to_date(),
-        type_ids=["Fact", "PaperAbstract", "Entity"]
+        type_ids=["fact", "abstract", "entity"]
     )
     similar_elements = sql_to_element_list([e[0] for e in similar_elements_sql])
     scores = [e[1] for e in similar_elements_sql]
@@ -118,7 +118,8 @@ def create_similarity_relationships_with_hypothetical(node: TopicNode, hypotheti
                 from_node=node,
                 to_node=element,
                 score=scores[i],
-                match_type="cosine_similarity"
+                match_type="cosine_similarity",
+
             )
             relationships.append(rel)
     return relationships
@@ -127,7 +128,7 @@ def identify_reference_nodes(node: TopicNode, subgraph: List[GraphElement]) -> T
     logging.info(f"Selecting references from subgraph for node {node.id}: {node.text[:100]}")
     references_list = list()
     for element in subgraph:
-        if isinstance(element, TopicMatchRelationship) and (element.to_node.type_id in ["Fact", "PaperAbstract"]):
+        if isinstance(element, TopicMatchRelationship) and (element.to_node.type_id in ["fact", "abstract"]):
             references_list.append((element.to_node, element.meta['score']))
     references_list.sort(key=lambda x: x[1])
     logging.info(f"Selected {len(references_list)} from subgraph for node {node.id}: {node.text[:100]}")
@@ -184,8 +185,8 @@ def create_references(node: TopicNode, reference_nodes: List[GraphElement], refe
         ref = TopicReference(
             index=i+1,
             text=ref_node.text,
-            citation=ref_node.meta.get("citation", ""),
-            title=ref_node.meta["title"],
+            citation=ref_node.citation,
+            title=ref_node.title,
             date=ref_node.date,
             url="",
             similarity=similarity,
@@ -408,6 +409,8 @@ def _topic_solver_v2(node: TopicNode) -> TopicNode:
         persist_graph_elements(elements_merge=[node], elements_add=relationships)
 
         reference_nodes, reference_scores = identify_reference_nodes(node=node, subgraph=relationships)
+
+
         reference_nodes, reference_scores = limit_references(meta=meta, reference_nodes=reference_nodes, reference_scores=reference_scores)
         meta.reference_ids = [n.id for n in reference_nodes]
         meta.reference_scores = [s for s in reference_scores]

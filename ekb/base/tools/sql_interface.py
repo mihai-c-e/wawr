@@ -31,7 +31,8 @@ class SQLABase(DeclarativeBase):
     pass
 
 _registered_graph_element_types = {
-    'TopicNode': TopicNode
+    'TopicNode': TopicNode,
+    'Topic': TopicNode
 }
 
 def _get_class_for_element_type(element_type: str):
