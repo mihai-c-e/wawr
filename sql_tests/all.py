@@ -9,7 +9,7 @@ def test_embed_and_find_by_similarity():
     embedding_key = "text-embedding-3-small"
     embeddings = create_embeddings(data=data, model="text-embedding-3-small")
     result = SQLAElement.find_by_similarity(with_strings=data, with_vectors=embeddings, distance_threshold=100,
-                                            embedding_key=embedding_key, limit=50, type_ids=["Fact", "PaperAbstract"])
+                                            embedding_key=embedding_key, limit=50, only_type_ids=["Fact", "PaperAbstract"])
     return result
 
 

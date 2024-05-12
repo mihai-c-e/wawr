@@ -1,9 +1,11 @@
+import datetime
 import logging
 
 from dotenv import load_dotenv
 load_dotenv('../../../wawr_ingestion.env')
 from ekb.base.topic import TopicMeta
-from ekb.base.tools.default_toolkit import topic_solver_v1, topic_solver_v2, break_down_question
+from ekb.base.tools.default_toolkit import EKBToolkit
+from ekb.wawr.wawr_embeddings import embedding_pool
 
 
 if __name__ == '__main__':
@@ -15,7 +17,10 @@ if __name__ == '__main__':
     # question = "What language models have been tested on chess?"
     # question = "What language models play starcraft?"
     question = "How well do language models play chess?"
-    meta = TopicMeta(source_id="remove", embedding_key="text-embedding-3-small", model="gpt-4-0125-preview", distance_threshold=0.5, limit=300)
-    topic_solver_v2(topic=question, meta=meta, in_thread=True)
+    embedding_key = "text-embedding-3-small-128"
+    toolkit = EKBToolkit(embedding_pool=embedding_pool)
+    meta = TopicMeta(source_id="remove", embedding_key=embedding_key, model="gpt-4-0125-preview", distance_threshold=0.5, limit=300)
+    meta.set_from_date(datetime.datetime(2000, 3, 1))
+    answer = toolkit.topic_solver_v2(embedding_key=embedding_key, topic=question, meta=meta, in_thread=False)
     #test=break_down_question(question, "gpt-4-0125-preview")
     print("Done")
