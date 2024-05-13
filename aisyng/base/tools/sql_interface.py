@@ -3,15 +3,15 @@ import logging
 import os
 from typing import List, Type, Dict, Tuple
 
-from sqlalchemy import String, ForeignKey, create_engine, select, case, true
+from sqlalchemy import String, ForeignKey, create_engine, select, case, true, Enum
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, scoped_session, aliased, Query
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
 
-from ekb.base.topic import TopicNode
-from ekb.base.models import GraphElement, GraphNode, GraphRelationship
-from ekb.base.embeddings import Embedder, EmbeddingPool
+from aisyng.base.topic import TopicNode
+from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
+from aisyng.base.embeddings import Embedder, EmbeddingPool
 
 _db_srv = os.environ["DATA_DB_SERVER"]
 _db_usr = os.environ["DATA_DB_USR"]

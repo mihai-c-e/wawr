@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple, Type
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from ekb.base.models import GraphNode, GraphRelationship
+from aisyng.base.models import GraphNode, GraphRelationship
 
 load_dotenv('../../../wawr_ingestion.env')
 
@@ -12,7 +12,7 @@ from base.tools.openai_models import create_embeddings
 import logging
 import threading
 from base.tools.sql_interface import Session, SQLAElement, SQLToolkit
-from ekb.wawr.wawr_embeddings import embedding_pool, Embedder
+from aisyng.wawr.wawr_embeddings import embedding_pool, Embedder
 
 sql_lock = threading.Lock()
 openai_api_lock = threading.Lock()

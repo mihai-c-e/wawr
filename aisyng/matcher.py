@@ -1,5 +1,5 @@
 import pandas as pd
-from ekb.llm_interface import OpenAIEmbeddings
+from aisyng.llm_interface import OpenAIEmbeddings
 from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
 from langchain.vectorstores import VectorStore, SKLearnVectorStore
 from typing import List

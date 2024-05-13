@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
-from typing import List, Set, Dict, Any, Iterable, Optional
+from typing import List, Set, Dict, Any, Iterable, Optional, Union
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ class GraphElement(BaseModel):
     id: str
     created_date: datetime
     status: str = ""
-    meta: Dict[str, Any] = dict()
+    meta: Union[BaseModel, Dict] = dict()
     text: str
     date: Optional[datetime] = None
     type_id: str
@@ -32,6 +33,9 @@ class GraphElement(BaseModel):
 
     def __hash__(self):
         return self.id.__hash__()
+
+    def meta_model_dump_json(self):
+        return json.dumps(self.meta) if isinstance(self.meta, dict) else self.meta.model_dump_json()
 
 
 class GraphNode(GraphElement):
@@ -56,6 +60,12 @@ class GraphRelationship(GraphElement):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def get_from_node_id(self):
+        return self.from_node.id if self.from_node is not None else self.from_node_id
+
+    def get_to_node_id(self):
+        return self.to_node.id if self.to_node is not None else self.to_node_id
 
 
 class Graph:

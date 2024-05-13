@@ -3,9 +3,9 @@ import logging
 
 from dotenv import load_dotenv
 load_dotenv('../../../wawr_ingestion.env')
-from ekb.base.topic import TopicMeta
-from ekb.base.tools.default_toolkit import EKBToolkit
-from ekb.wawr.wawr_embeddings import embedding_pool
+from aisyng.base.topic import TopicMeta
+from aisyng.base.tools.default_toolkit import EKBToolkit
+from aisyng.wawr.wawr_embeddings import embedding_pool
 
 
 if __name__ == '__main__':

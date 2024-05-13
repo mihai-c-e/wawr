@@ -1,6 +1,6 @@
-from ekb.llm_interface import ChatGPTConnection, EmbeddingService
-from ekb.matcher import KeywordMatchingService
-from ekb.db_interface import Neo4jConnection
+from aisyng.llm_interface import ChatGPTConnection, EmbeddingService
+from aisyng.matcher import KeywordMatchingService
+from aisyng.db_interface import Neo4jConnection
 from py2neo.data import Node, Relationship, Path
 from py2neo import walk
 from typing import List, Set, Dict, Any, Optional

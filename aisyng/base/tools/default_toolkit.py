@@ -8,11 +8,11 @@ from typing import List, Tuple, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel
 from jinja2 import Template
-from ekb.base.tools.sql_interface import SQLAElement, SQLToolkit
-from ekb.base.models import GraphElement, GraphNode, GraphRelationship
-from ekb.base.topic import TopicSolverBase, TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown
-from ekb.base.embeddings import Embedder, EmbeddingPool
-from ekb.base.tools.openai_models import create_embeddings, query_model, moderate_text, InappropriateContentException
+from aisyng.base.tools.sql_interface import SQLAElement, SQLToolkit
+from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
+from aisyng.base.topic import TopicSolverBase, TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown
+from aisyng.base.embeddings import Embedder, EmbeddingPool
+from aisyng.base.tools.openai_models import create_embeddings, query_model, moderate_text, InappropriateContentException
 
 
 class TopicReference(BaseModel):

@@ -8,20 +8,20 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from sqlalchemy.orm import aliased
 
-from ekb.base.models import GraphNode, GraphRelationship, GraphElement
+from aisyng.base.models import GraphNode, GraphRelationship, GraphElement
 
 load_dotenv('../../../wawr_ingestion.env')
 
 from sqlalchemy import select
 from jinja2 import Template
 from pydantic import BaseModel
-from ekb.base.tools.openai_models import query_model
+from aisyng.base.tools.openai_models import query_model
 import logging
 from multiprocessing.pool import ThreadPool
 import threading
-from ekb.base.tools.sql_interface import SQLToolkit, Session, SQLAElement
-from ekb.wawr.wawr_embeddings import embedding_pool
-from ekb.utils import read_json
+from aisyng.base.tools.sql_interface import SQLToolkit, Session, SQLAElement
+from aisyng.wawr.wawr_embeddings import embedding_pool
+from aisyng.utils import read_json
 
 sql_lock = threading.Lock()
 openai_api_lock = threading.Lock()

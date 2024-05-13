@@ -1,11 +1,11 @@
 from typing import List
 
-from ekb.base.embeddings import embedding_pool, Embedder
-from ekb.base.tools.sql_interface import SQLABase
+from aisyng.base.embeddings import Embedder
+from aisyng.base.tools.sql_interface import SQLABase
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
-from ekb.base.tools.openai_models import create_embeddings
+from aisyng.base.tools.openai_models import create_embeddings
 
 class OpenAITextEmbedding3Small(SQLABase):
     __tablename__ = "openai_text_embedding_3_small"
@@ -38,5 +38,3 @@ class TextEmbedding3Small128(Embedder):
         kwargs['dimensions'] = 128
         return create_embeddings(data, model="text-embedding-3-small", **kwargs)
 
-embedding_pool.add_embedder(TextEmbedding3Small())
-embedding_pool.add_embedder(TextEmbedding3Small128())

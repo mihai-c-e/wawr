@@ -10,7 +10,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from langchain.embeddings import OpenAIEmbeddings
 
-from ekb.utils import read_json, read_html
+from aisyng.utils import read_json, read_html
 
 
 from langchain.prompts.chat import (
@@ -25,7 +25,7 @@ from neo4j import GraphDatabase
 from py2neo.data import Relationship, Node
 from py2neo import Graph, NodeMatcher, RelationshipMatcher
 
-from ekb.utils import check_env
+from aisyng.utils import check_env
 import logging
 
 class ChatGPTConnection:

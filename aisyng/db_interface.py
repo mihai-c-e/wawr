@@ -2,7 +2,7 @@ from neo4j import GraphDatabase
 from py2neo.data import Node, Path
 from py2neo import Graph
 import os
-from ekb.utils import check_env, read_html
+from aisyng.utils import check_env, read_html
 from typing import List, Set, Dict, Any
 import logging
 

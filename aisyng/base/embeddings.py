@@ -30,6 +30,3 @@ class EmbeddingPool:
 
     def get_table(self, embedding_key: str) -> DeclarativeBase:
         return self.get_embedder(embedding_key).table
-
-
-embedding_pool = EmbeddingPool()

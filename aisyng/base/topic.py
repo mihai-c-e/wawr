@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Callable, List, Any, Optional, Dict
 from pydantic import BaseModel
-from ekb.base.models import GraphNode, GraphRelationship
+from aisyng.base.models import GraphNode, GraphRelationship
 
 _date_format = '%d-%m-%Y %H:%M:%SZ'
 
