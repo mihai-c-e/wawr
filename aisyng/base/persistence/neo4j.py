@@ -17,10 +17,13 @@ class Neo4JPersistenceInterface(PersistenceInterface):
 
     def persist(self, objects_add: List[GraphElement] = None, objects_merge: List[GraphElement] = None,
                 **kwargs) -> bool:
+        all_objects = ((objects_add if isinstance(objects_add, List) else list()) +
+                       (objects_merge if isinstance(objects_merge, List) else list()))
+        all_objects.sort(key=lambda x: 1 if isinstance(x, GraphRelationship) else 0)
         with GraphDatabase.driver(_connection_uri, auth=_auth) as driver:
             with driver.session(database=_db) as session:
-                session.execute_write(self._create_key_constraints_tx, objects_merge+objects_add)
-                for obj in objects_add:
+                session.execute_write(self._create_key_constraints_tx, all_objects)
+                for obj in all_objects:
                     session.execute_write(self._create_graph_element_tx, obj, False)
         return True
 
@@ -29,8 +32,8 @@ class Neo4JPersistenceInterface(PersistenceInterface):
                 f"FOR (node:{node_type}) REQUIRE (node.id) IS NODE KEY")
 
     def _create_relationship_unique_constraint_query(self, rel_type: str) -> str:
-        return (f"CREATE CONSTRAINT rel_type_{rel_type}_key IF NOT_EXISTS "
-                f"FOR ()-[rel:{rel_type}] REQUIRE (rel.id) IS RELATIONSHIP KEY")
+        return (f"CREATE CONSTRAINT rel_type_{rel_type}_key IF NOT EXISTS "
+                f"FOR ()-[rel:{rel_type}]-() REQUIRE (rel.id) IS RELATIONSHIP KEY")
 
     def _create_key_constraints_tx(self, tx, objects: List[GraphElement]) -> None:
         node_types = {o.type_id for o in objects if isinstance(o, GraphNode)}
@@ -51,11 +54,13 @@ class Neo4JPersistenceInterface(PersistenceInterface):
             return self._create_relationship_tx(tx, element, merge)
 
     def _create_node_tx(self, tx: ManagedTransaction, element: GraphNode, merge: bool):
-        result = tx.run(f"MERGE (n: {element.type_id}:ALL {{"
-                        "id: $id, created_date: $created_date, status: $status, text: $text, date: $date, "
-                        "type_id: $type_id, citation: $citation, source_id: $source_id, title: $title, "
-                        "text_type: $text_type, meta: $meta"
-                        "})",
+        result = tx.run(f"MERGE (n:{element.type_id} {{id: $id}}) ON CREATE SET "
+                        "n.`id`=$id, n.`created_date`=$created_date, n.`status`=$status, n.`text`=$text, "
+                        "n.`type_id`=$type_id, n.`citation`=$citation, n.`source_id`=$source_id, "
+                        "n.`text_type`=$text_type, n.`meta`=$meta"
+                        f"{', n.`date`=$date' if element.date is not None else ''}"
+                        f"{', n.`title`=$title' if element.date is not None else ''}"
+                        " RETURN n.id",
                         id=element.id,
                         created_date=element.created_date,
                         status=element.status,
@@ -71,22 +76,26 @@ class Neo4JPersistenceInterface(PersistenceInterface):
         return result
 
     def _create_relationship_tx(self, tx: ManagedTransaction, element: GraphRelationship, merge: bool):
-        result = tx.run("MATCH (n1 {id: $from_node_id})"
-                        "MATCH (n2 {id: $to_node_id})"
+        result = tx.run("MATCH (n1 {id: $from_node_id}) "
+                        "MATCH (n2 {id: $to_node_id}) "
                         f"MERGE (n1)-[r: {element.type_id} {{"
-                        "id: $id, created_date: $created_date, status: $status, text: $text, date: $date, "
-                        "type_id: $type_id, citation: $citation, source_id: $source_id, title: $title, "
+                        "id: $id, created_date: $created_date, status: $status, text: $text, "
+                        "type_id: $type_id, citation: $citation, source_id: $source_id, "
                         "text_type: $text_type, meta: $meta"
+                        f"{', date: $date' if element.date is not None else ''}"
+                        f"{', title: $title' if element.date is not None else ''}"
                         "}]->(n2)",
+                        from_node_id=element.get_from_node_id(),
+                        to_node_id=element.get_to_node_id(),
                         id=element.id,
                         created_date=element.created_date,
                         status=element.status,
                         text=element.text,
-                        date=element.date,
+                        date=element.date or "",
                         type_id=element.type_id,
-                        citation=element.citation,
+                        citation=element.citation or "",
                         source_id=element.source_id or "",
-                        title=element.title,
+                        title=element.title or "",
                         text_type=element.text_type or "",
                         meta=element.meta_model_dump_json()
                         )

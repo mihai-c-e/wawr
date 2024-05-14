@@ -35,9 +35,10 @@ def create_title_node_from_abstract_info(abstract_node: GraphNode) -> GraphNode:
 
 def create_title_to_abstract_relationship(abstract_node: GraphNode, title_node: GraphNode) -> GraphRelationship:
     return GraphRelationship(
-        id=get_relationship_id(title_node, GraphElementTypes.Is_Title_Of, abstract_node),
+        id=get_relationship_id(title_node, GraphElementTypes.IsTitleOf, abstract_node),
         from_node=title_node,
         to_node=abstract_node,
         text="title of",
-        type_id=GraphElementTypes.Is_Title_Of,
+        type_id=GraphElementTypes.IsTitleOf,
+        date=abstract_node.date,
     )

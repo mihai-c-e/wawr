@@ -102,7 +102,7 @@ class SQLAPersistenceInterface(PersistenceInterface):
         obj = self._element_to_sql_object(element)
         obj.id = element.id
         obj.source_id = element.source_id
-        obj.meta = element.meta if isinstance(element.meta, dict) else element.meta.model_dump()
+        obj.meta = element.meta if isinstance(element.meta, dict) else element.meta.model_dump(mode='json')
         obj.text = element.text
         obj.date = element.date
         obj.created_date = element.created_date

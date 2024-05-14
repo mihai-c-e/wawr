@@ -19,8 +19,6 @@ from aisyng.base.tools.openai_models import query_model
 import logging
 from multiprocessing.pool import ThreadPool
 import threading
-from aisyng.base.tools.sql_interface import SQLToolkit, Session, SQLAElement
-from aisyng.wawr.wawr_embeddings import embedding_pool
 from aisyng.utils import read_json
 
 sql_lock = threading.Lock()

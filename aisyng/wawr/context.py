@@ -1,3 +1,5 @@
+from typing import cast
+
 from aisyng.base.context import AppContext
 from aisyng.wawr.wawr_embeddings import TextEmbedding3Small, TextEmbedding3Small128
 from aisyng.base.embeddings import EmbeddingPool
@@ -23,3 +25,6 @@ class WAWRContext(AppContext):
             persistence=persistence,
             embedding_pool=embedding_pool
         )
+
+    def get_persistence(self) -> WAWRPersistence:
+        return cast(WAWRPersistence, self.persistence)
