@@ -2,10 +2,10 @@ import logging
 import os
 import json
 import pandas as pd
-from typing import List, Dict, Any
+from typing import List
 from aisyng.wawr.models import PaperAbstract
-from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
-from aisyng.wawr.model_factory import create_abstract_node, create_title_node_from_abstract_info, \
+from aisyng.base.models import GraphElement
+from wawr.models.model_factory import create_abstract_node, create_title_node_from_abstract_info, \
     create_title_to_abstract_relationship
 
 

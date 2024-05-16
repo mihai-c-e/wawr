@@ -5,7 +5,7 @@ from aisyng.base.tools.sql_interface import SQLABase
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
-from aisyng.base.tools.openai_models import create_embeddings
+from base.llms.openai_models import create_embeddings
 
 class OpenAITextEmbedding3Small(SQLABase):
     __tablename__ = "openai_text_embedding_3_small"

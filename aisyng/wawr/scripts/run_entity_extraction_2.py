@@ -20,7 +20,7 @@ from aisyng.utils import read_json
 from aisyng.wawr.context import WAWRContext
 from aisyng.wawr.models import Entity, GraphElementTypes
 from aisyng.wawr.scripts._entity_extraction_prompts import entity_extraction_prompt_2
-from aisyng.base.tools.openai_models import query_model
+from base.llms.openai_models import query_model
 # from aisyng.base.tools.mistral_models import query_model
 
 

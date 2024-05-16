@@ -17,10 +17,14 @@ class GraphElementTypes(str, Enum):
     Entity = "entity",
     EntityType = "entity_type"
 
+    Topic = "topic"
+    TopicSolver = "topic_solver"
+
     IsTitleOf = "is_title_of"
     IsExtractedFrom = "is_extracted_from"
     IsOfType = "is_of_type"
     IsA = "is_a"
+    IsSolvedBy="is_solved_by"
 
 def should_ignore_graph_element_duplicates(ge: GraphElement):
     return ge.type_id in [

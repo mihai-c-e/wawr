@@ -19,7 +19,7 @@ from aisyng.utils import read_json
 from aisyng.wawr.context import WAWRContext
 from aisyng.wawr.models import Fact, GraphElementTypes
 from aisyng.wawr.scripts._fact_extraction_prompts import fact_extraction_prompt_1
-from aisyng.base.tools.openai_models import query_model
+from base.llms.openai_models import query_model
 
 
 sql_lock = threading.Lock()

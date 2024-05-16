@@ -4,6 +4,8 @@ from pydantic import BaseModel, field_validator, field_serializer
 from aisyng.base.models import GraphNode, GraphRelationship
 from aisyng.base.utils import strptime_ymdhms, strftime_ymdhms
 from aisyng.wawr.models._models_utils import _validate_date
+from aisyng.base.context import AppContext
+from aisyng.base.llms.base import LLMName, InappropriateContentException
 
 
 class TopicBreakdown(BaseModel):
@@ -48,14 +50,30 @@ class TopicSolverBase(BaseModel):
     def serialize_date(self, d: datetime):
         return strftime_ymdhms(d)
 
+    def solve_internal(self, topic_node: TopicNode, context: AppContext):
+        raise NotImplementedError()
+
+    def solve(self, topic_node: TopicNode, context: AppContext):
+        try:
+            llm = context.llm_providers.get_by_model_name(self.llm_name)
+            llm.moderate_text(text=topic_node.text)
+            self.solve_internal(topic_node=topic_node, context=context)
+        except InappropriateContentException as ex:
+            self.status = "Error"
+            self.progress = 0.0
+            self.log_history.append(f"Error: {str(ex)}")
+            self.user_message = "Your question was flagged as inappropriate and will not be processed."
+            #TODO: persist
+
 class DirectSimilarityTopicSolver(TopicSolverBase):
     distance_threshold: float = 0.7
     embedding_key: str
-    model: str
+    llm_name: LLMName
     limit: int = 1000
 
-class TopicAnswer(BaseModel):
-    answer: str
+    def solve_internal(self, topic_node: TopicNode, context: AppContext):
+        llm = context.llm_providers.get_by_model_name(self.llm_name)
+        context.add_graph_elements_embedding(embedding_key=self.embedding_key, element=topic_node)
 
 
 class TopicMatchRelationship(GraphRelationship):

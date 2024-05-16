@@ -10,7 +10,7 @@ from aisyng.base.tools.sql_interface import SQLAElement, SQLToolkit
 from aisyng.base.models import GraphElement, GraphNode
 from wawr.models.topic import TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown, TopicReference
 from aisyng.base.embeddings import EmbeddingPool
-from aisyng.base.tools.openai_models import query_model, moderate_text, InappropriateContentException
+from base.llms.openai_models import query_model, moderate_text, InappropriateContentException
 
 
 class EKBToolkit:
@@ -20,20 +20,6 @@ class EKBToolkit:
     def __init__(self, embedding_pool: EmbeddingPool):
         self.embedding_pool = embedding_pool
         self.sql_toolkit = SQLToolkit(embedding_pool=embedding_pool)
-
-    def create_topic_node(self, topic: str, meta: TopicMeta) -> TopicNode:
-        logging.info(f"Creating topic node: {topic} with meta: {meta}")
-        topic_node = TopicNode(text=topic, topic_meta=meta)
-        return topic_node
-
-    def add_element_embedding(self, element: GraphElement, embedding_key: str) -> GraphElement:
-        logging.info(f"Calculating embeddings for node {element.id}: {element.text[:100]}")
-        if embedding_key in element.embeddings:
-            return element
-        embedder = self.embedding_pool.get_embedder(embedding_key)
-        embedding = embedder.create_embeddings([element.text])[0]
-        element.embeddings[embedder.name] = embedding
-        return element
 
     def create_similarity_relationships(self, node: TopicNode, embedding_key: str) -> List[TopicMatchRelationship]:
         logging.info(f"Finding similar elements for node {node.id}: {node.text[:100]}")

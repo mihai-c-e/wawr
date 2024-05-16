@@ -4,8 +4,8 @@ from aisyng.base.context import AppContext
 from aisyng.wawr.wawr_embeddings import TextEmbedding3Small, TextEmbedding3Small128
 from aisyng.base.embeddings import EmbeddingPool
 from aisyng.wawr.persistence import WAWRPersistence
-from aisyng.base.persistence.psql import PSQLPersistenceInterface
-from aisyng.base.persistence.neo4j import Neo4JPersistenceInterface
+from aisyng.base.datastore.psql import PSQLPersistenceInterface
+from aisyng.base.datastore.neo4j import Neo4JPersistenceInterface
 
 
 class WAWRContext(AppContext):

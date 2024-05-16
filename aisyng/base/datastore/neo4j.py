@@ -5,7 +5,7 @@ from typing import List
 from neo4j import GraphDatabase, Transaction, ManagedTransaction
 from pydantic import BaseModel
 
-from aisyng.base.persistence.base import PersistenceInterface
+from aisyng.base.datastore.base import PersistenceInterface
 from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
 
 _connection_uri = os.environ["AURA_CONNECTION_URI"]

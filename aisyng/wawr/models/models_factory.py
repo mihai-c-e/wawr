@@ -1,5 +1,10 @@
-from aisyng.wawr.models import PaperAbstract, GraphElementTypes
+from datetime import datetime
+
+from aisyng.wawr.models.kb import PaperAbstract, GraphElementTypes
 from aisyng.base.models import GraphNode, GraphRelationship
+from aisyng.wawr.models.topic import TopicNode, TopicMeta
+
+
 
 def get_abstract_node_id(node_info: PaperAbstract):
     return node_info.id
@@ -41,4 +46,24 @@ def create_title_to_abstract_relationship(abstract_node: GraphNode, title_node: 
         text="title of",
         type_id=GraphElementTypes.IsTitleOf,
         date=abstract_node.date,
+    )
+
+def create_topic_node(ask: str, source_id: str) -> TopicNode:
+    topic_meta = TopicMeta(ask=ask, source_id=source_id)
+    return TopicNode(
+        text=ask,
+        date=datetime.now(),
+        title=ask,
+        meta=topic_meta,
+        type_id=GraphElementTypes.Topic,
+        source_id=source_id
+    )
+
+def create_topic_solver_relationship(topic_solver_node: TopicSolverNode, topic_node: TopicNode) -> GraphRelationship:
+    return GraphRelationship(
+        from_node=topic_solver_node,
+        to_node=topic_node,
+        text=GraphElementTypes.IsSolvedBy,
+        type_id=GraphElementTypes.IsSolvedBy,
+        date=topic_solver_node.date
     )

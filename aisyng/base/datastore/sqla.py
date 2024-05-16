@@ -10,7 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from aisyng.base.embeddings import EmbeddingPool
 from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
-from aisyng.base.persistence.base import PersistenceInterface
+from aisyng.base.datastore.base import PersistenceInterface
 
 
 class SQLABase(DeclarativeBase):

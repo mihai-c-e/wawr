@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv('../wawr_ingestion.env')
 
-from base.tools.openai_models import create_embeddings
+from base.llms.openai_models import create_embeddings
 from base.tools.sql_interface import SQLAElement
 
 def test_embed_and_find_by_similarity():

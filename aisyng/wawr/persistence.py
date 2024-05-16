@@ -4,9 +4,9 @@ from typing import List, cast
 from sqlalchemy import select, Null
 from sqlalchemy.orm import aliased
 
-from aisyng.base.persistence.base import MultiMediaPersist
-from aisyng.base.persistence.sqla import SQLAPersistenceInterface, SQLAElement, SQLARelationship
-from aisyng.base.persistence.neo4j import Neo4JPersistenceInterface
+from aisyng.base.datastore.base import MultiMediaPersist
+from aisyng.base.datastore.sqla import SQLAPersistenceInterface, SQLAElement, SQLARelationship
+from aisyng.base.datastore.neo4j import Neo4JPersistenceInterface
 from aisyng.wawr.models import GraphElementTypes, should_ignore_graph_element_duplicates
 from aisyng.base.models import GraphNode, GraphElement, GraphRelationship
 

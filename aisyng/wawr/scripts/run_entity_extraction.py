@@ -1,8 +1,7 @@
 import json
 import random
-import re
 from functools import partial
-from typing import List, Dict, Tuple, Set
+from typing import List, Tuple, Set
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -15,7 +14,7 @@ load_dotenv('../../../wawr_ingestion.env')
 from sqlalchemy import select
 from jinja2 import Template
 from pydantic import BaseModel
-from aisyng.base.tools.openai_models import query_model
+from base.llms.openai_models import query_model
 import logging
 from multiprocessing.pool import ThreadPool
 import threading

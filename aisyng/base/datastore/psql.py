@@ -3,7 +3,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from aisyng.base.persistence.sqla import SQLAPersistenceInterface
+from aisyng.base.datastore.sqla import SQLAPersistenceInterface
 from aisyng.base.embeddings import EmbeddingPool
 
 _db_srv = os.environ["DATA_DB_SERVER"]
