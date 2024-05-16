@@ -28,3 +28,6 @@ class WAWRContext(AppContext):
 
     def get_persistence(self) -> WAWRPersistence:
         return cast(WAWRPersistence, self.persistence)
+
+    def get_embedding_pool(self) -> EmbeddingPool:
+        return self.embedding_pool

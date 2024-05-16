@@ -9,10 +9,11 @@ model = "mistral-large-latest"
 
 client = MistralClient(api_key=api_key)
 
-def query_model(query: str, model="mistral-largel-latest", temperature=0.1) -> Tuple[str, ChatCompletionResponse]:
+def query_model(query: str, model="mistral-largel-latest", temperature=0.1, **kwargs) -> Tuple[str, ChatCompletionResponse]:
     chat_completion = client.chat(
         messages=[ChatMessage(role="user", content=query)],
         model=model,
-        temperature=temperature
+        temperature=temperature,
+        **kwargs
     )
     return chat_completion.choices[0].message.content, chat_completion

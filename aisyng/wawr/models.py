@@ -91,10 +91,14 @@ class PaperAbstract(BaseModel):
 class Fact(BaseModel):
     type: str
     text: str
-    citation: str
+    citation: Optional[str] = ""
     date: datetime
 
     @classmethod
     def model_validate_with_date(cls, fact_dict: Dict[str, Any], date: datetime) -> "Fact":
         fact_dict['date'] = date
         return cls.model_validate(fact_dict)
+
+class Entity(BaseModel):
+    name: str
+

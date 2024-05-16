@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import List, Callable, Any
 
@@ -70,6 +71,18 @@ class SQLAPersistenceInterface(PersistenceInterface):
             objects_add=None if objects_add is None else self.elements_to_sql(objects_add),
             objects_merge=None if objects_merge is None else self.elements_to_sql(objects_merge),
         )
+
+    def persist_embeddings(self, nodes: List[GraphNode], embedding_key: str, batch_size: int):
+        embedder = self.embedding_pool.get_embedder(embedding_key)
+        logging.info(f"Saving {len(nodes)} embeddings to database")
+        for i in range(0, len(nodes), batch_size):
+            sql_objects: List[embedder.table] = list()
+            for node in nodes[i:i + batch_size]:
+                emb_row = self.embedding_to_sql(node, embedding_key=embedder.name)
+                sql_objects.append(emb_row)
+            with self.session_factory() as sess:
+                with sess.begin():
+                    sess.add_all(sql_objects)
 
     def persist_sql_objects(self, objects_add: List[SQLAElement] = None, objects_merge: List[SQLAElement] = None,
                             **kwargs) -> bool:

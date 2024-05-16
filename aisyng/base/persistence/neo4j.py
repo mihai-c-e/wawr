@@ -1,7 +1,9 @@
+import json
 import logging
 import os
 from typing import List
 from neo4j import GraphDatabase, Transaction, ManagedTransaction
+from pydantic import BaseModel
 
 from aisyng.base.persistence.base import PersistenceInterface
 from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
@@ -71,9 +73,11 @@ class Neo4JPersistenceInterface(PersistenceInterface):
                         source_id=element.source_id or "",
                         title=element.title,
                         text_type=element.text_type or "",
-                        meta=element.meta_model_dump_json()
+                        meta="{}" if isinstance(element.meta, BaseModel) else json.dumps(element.meta) if isinstance(
+                            element.meta, dict) else element.meta_model_dump_json()
                         )
-        return result
+
+        return list(result)
 
     def _create_relationship_tx(self, tx: ManagedTransaction, element: GraphRelationship, merge: bool):
         result = tx.run("MATCH (n1 {id: $from_node_id}) "
