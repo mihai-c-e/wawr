@@ -67,6 +67,9 @@ class GraphRelationship(GraphElement):
     def get_to_node_id(self):
         return self.to_node.id if self.to_node is not None else self.to_node_id
 
+class ScoredGraphElement(BaseModel):
+    element: GraphElement
+    score: float
 
 class Graph:
     nodes: Dict[str, GraphNode] = dict()

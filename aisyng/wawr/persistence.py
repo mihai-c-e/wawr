@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import List, cast
 
 from sqlalchemy import select, Null
@@ -7,8 +8,9 @@ from sqlalchemy.orm import aliased
 from aisyng.base.datastore.base import MultiMediaPersist
 from aisyng.base.datastore.sqla import SQLAPersistenceInterface, SQLAElement, SQLARelationship
 from aisyng.base.datastore.neo4j import Neo4JPersistenceInterface
-from aisyng.wawr.models import GraphElementTypes, should_ignore_graph_element_duplicates
-from aisyng.base.models import GraphNode, GraphElement, GraphRelationship
+from aisyng.wawr.models.kb import GraphElementTypes, should_ignore_graph_element_duplicates
+from aisyng.base.models import GraphNode, GraphElement, GraphRelationship, ScoredGraphElement
+from aisyng.base.embeddings import Embedder
 
 
 class WAWRPersistence(MultiMediaPersist):
@@ -136,3 +138,29 @@ class WAWRPersistence(MultiMediaPersist):
         if len(nodes) > 0:
             logging.info(f"Loaded {len(nodes)} nodes without embeddings")
         return cast(List[GraphNode], nodes)
+
+    def find_by_similarity(
+            self,
+            with_strings: List[str],
+            with_vectors: List[List[float]],
+            distance_threshold: float,
+            embedder: Embedder,
+            limit: int,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            only_type_ids: List[str] = None,
+            exclude_type_ids: List[str] = None,
+            **kwargs
+    ) -> List[ScoredGraphElement]:
+        return self.sqli.find_by_similarity(
+            with_strings=with_strings,
+            with_vectors=with_vectors,
+            distance_threshold=distance_threshold,
+            embedder=embedder,
+            limit=limit,
+            from_date=from_date,
+            to_date=to_date,
+            only_type_ids=only_type_ids,
+            exclude_type_ids=exclude_type_ids,
+            **kwargs
+        )

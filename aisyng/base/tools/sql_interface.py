@@ -80,8 +80,6 @@ class SQLAElement(SQLABase):
                     '%' + with_strings[i] + '%'), 0.0),
                 else_=embedder.table.embedding.cosine_distance(with_vectors[i])
             ))
-            # element = (1 - emb_table.embedding.cosine_distance(with_vectors[i]))
-
             distance_formula = (element if distance_formula is None else (distance_formula * element))
 
         subquery = (select(

@@ -8,8 +8,8 @@ from sqlalchemy import ForeignKey, Engine
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from aisyng.base.embeddings import EmbeddingPool
-from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
+from aisyng.base.embeddings import EmbeddingPool, Embedder
+from aisyng.base.models import GraphElement, GraphNode, GraphRelationship, ScoredGraphElement
 from aisyng.base.datastore.base import PersistenceInterface
 
 
@@ -58,6 +58,20 @@ class SQLAPersistenceInterface(PersistenceInterface):
     def __init__(self, embedding_pool: EmbeddingPool, session_factory: Callable[[Any], Engine]):
         self.embedding_pool = embedding_pool
         self.session_factory = session_factory
+
+    def find_by_similarity(
+            self,
+            with_strings: List[str],
+            with_vectors: List[List[float]],
+            distance_threshold: float,
+            embedder: Embedder,
+            limit: int,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            only_type_ids: List[str] = None,
+            exclude_type_ids: List[str] = None, **kwargs
+    ) -> List[ScoredGraphElement]:
+        raise NotImplementedError
 
     def persist(
             self,

@@ -1,12 +1,29 @@
+from datetime import datetime
 from typing import List
 
-from aisyng.base.models import GraphElement
+from aisyng.base.models import GraphElement, ScoredGraphElement
+from aisyng.base.embeddings import Embedder
 
 
 class PersistenceInterface:
 
     def persist(self, objects_add: List[GraphElement] = None, objects_merge: List[GraphElement] = None,
                 **kwargs) -> bool:
+        raise NotImplementedError()
+
+    def find_by_similarity(
+            self,
+            with_strings: List[str],
+            with_vectors: List[List[float]],
+            distance_threshold: float,
+            embedder: Embedder,
+            limit: int,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            only_type_ids: List[str] = None,
+            exclude_type_ids: List[str] = None,
+            **kwargs
+    ) -> List[ScoredGraphElement]:
         raise NotImplementedError()
 
 class MultiMediaPersist(PersistenceInterface):

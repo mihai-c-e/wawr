@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Callable, List, Any, Optional, Dict
 from pydantic import BaseModel, field_validator, field_serializer
-from aisyng.base.models import GraphNode, GraphRelationship
+from aisyng.base.models import GraphNode, GraphRelationship, ScoredGraphElement
 from aisyng.base.utils import strptime_ymdhms, strftime_ymdhms
 from aisyng.wawr.models._models_utils import _validate_date
 from aisyng.base.context import AppContext
@@ -59,11 +59,18 @@ class TopicSolverBase(BaseModel):
             llm.moderate_text(text=topic_node.text)
             self.solve_internal(topic_node=topic_node, context=context)
         except InappropriateContentException as ex:
-            self.status = "Error"
+            self.status = "Inappropriate content"
             self.progress = 0.0
             self.log_history.append(f"Error: {str(ex)}")
             self.user_message = "Your question was flagged as inappropriate and will not be processed."
             #TODO: persist
+        except Exception as ex:
+            self.status = "Error"
+            self.progress = 0.0
+            self.log_history.append(f"Error: {str(ex)}")
+            self.user_message = "There was an error processing your request")
+            #TODO: persist
+            raise
 
 class DirectSimilarityTopicSolver(TopicSolverBase):
     distance_threshold: float = 0.7
@@ -74,7 +81,56 @@ class DirectSimilarityTopicSolver(TopicSolverBase):
     def solve_internal(self, topic_node: TopicNode, context: AppContext):
         llm = context.llm_providers.get_by_model_name(self.llm_name)
         context.add_graph_elements_embedding(embedding_key=self.embedding_key, element=topic_node)
+        self.log_history.append("Calculated embeddings")
+        self.status = "Retrieving from knowledge base"
+        self.progress = 0.1
+        # TODO persist
+        matched: List[ScoredGraphElement] = context.persistence.find_by_similarity(
+            with_strings=[topic_node.text],
+            with_vectors=[topic_node.embeddings[self.embedding_key]],
+            distance_threshold=self.distance_threshold,
+            embedder=context.embedding_pool.get_embedder(self.embedding_key),
+            limit=self.limit,
+            from_date=self.from_date,
+            to_date=self.to_date,
 
+        )
+        relationships = self.create_similarity_relationships(node=node, embedding_key=embedding_key)
+        meta.subgraph_ids = [rel.id for rel in relationships]
+        meta.subgraph_ids.extend(rel.to_node.id for rel in relationships)
+        meta.status = "References"
+        meta.progress = 0.5
+        meta.log_history.append("Retrieved subgraph")
+        node.update_topic_meta(meta)
+        self.sql_toolkit.persist_graph_elements(elements_merge=[node], elements_add=relationships)
+
+        reference_nodes, reference_scores = self.identify_reference_nodes(node=node, subgraph=relationships)
+        reference_nodes, reference_scores = self.limit_references(meta=meta, reference_nodes=reference_nodes,
+                                                                  reference_scores=reference_scores)
+        meta.reference_ids = [n.id for n in reference_nodes]
+        meta.reference_scores = [s for s in reference_scores]
+        references = self.create_references(node=node, reference_nodes=reference_nodes,
+                                            reference_scores=reference_scores)
+
+        meta.status = "Answering"
+        meta.progress = 0.7
+        meta.log_history.append("Retrieved references")
+        node.update_topic_meta(meta)
+        self.sql_toolkit.persist_graph_elements(elements_merge=[node])
+
+        if len(references) == 0:
+            meta.response = "No data found. Try relaxing the parameters (e.g. larger time interval, or lower precision)."
+            meta.usage = {}
+        else:
+            response = self.get_answer(node=node, references=references)
+            meta.response = response[0]
+            meta.usage = dict(response[1].usage)
+        meta.status = "Completed"
+        meta.progress = 1.0
+        meta.log_history.append("Answer received")
+        node.update_topic_meta(meta)
+        self.sql_toolkit.persist_graph_elements(elements_merge=[node])
+        return node
 
 class TopicMatchRelationship(GraphRelationship):
     def __init__(self, score: float = None, match_type: str = None, **kwargs):
