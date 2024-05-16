@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv('../../../wawr_ingestion.env')
-from base.retrieval.topic import TopicMeta
+from wawr.models.topic import TopicMeta
 from aisyng.base.tools.default_toolkit import EKBToolkit
 from aisyng.wawr.context import WAWRContext
 

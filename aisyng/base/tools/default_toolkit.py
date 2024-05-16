@@ -5,12 +5,10 @@ import time
 import numpy as np
 from threading import Thread
 from typing import List, Tuple, Dict, Any
-from datetime import datetime
-from pydantic import BaseModel
 from jinja2 import Template
 from aisyng.base.tools.sql_interface import SQLAElement, SQLToolkit
 from aisyng.base.models import GraphElement, GraphNode
-from aisyng.base.retrieval.topic import TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown, TopicReference
+from wawr.models.topic import TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown, TopicReference
 from aisyng.base.embeddings import EmbeddingPool
 from aisyng.base.tools.openai_models import query_model, moderate_text, InappropriateContentException
 

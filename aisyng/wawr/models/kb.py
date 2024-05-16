@@ -6,19 +6,7 @@ import pandas as pd
 from pydantic import BaseModel, field_validator, field_serializer
 from aisyng.base.utils import strptime_admyhmsgmt, strptime_ymdhms, strftime_ymdhms, strftime_ymd, strptime_ymd
 from aisyng.base.models import GraphElement
-
-
-def _validate_date(obj: Any, date_validators: List[Callable]) -> datetime:
-    if isinstance(obj, datetime):
-        return obj
-    if isinstance(obj, pd.Timestamp):
-        return obj.to_pydatetime()
-    for validator in date_validators:
-        try:
-            return validator(obj)
-        except Exception:
-            pass
-    raise ValueError(f"Can't treat value of type: {type(obj)}, or all validators failed: {obj}")
+from aisyng.wawr.models._models_utils import _validate_date
 
 
 class GraphElementTypes(str, Enum):

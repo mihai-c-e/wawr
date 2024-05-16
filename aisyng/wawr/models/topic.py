@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Callable, List, Any, Optional, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, field_serializer
 from aisyng.base.models import GraphNode, GraphRelationship
+from aisyng.base.utils import strptime_ymdhms, strftime_ymdhms
+from aisyng.wawr.models._models_utils import _validate_date
 
-_date_format = '%d-%m-%Y %H:%M:%SZ'
 
 class TopicBreakdown(BaseModel):
     filter: List[str]
@@ -11,43 +12,8 @@ class TopicBreakdown(BaseModel):
 
 class TopicMeta(BaseModel):
     source_id: str
-    progress: float = 0.0
-    status: str = "initialised"
-    distance_threshold: float = 0.7
-    subgraph_ids: List[str] = list()
-    reference_ids: List[str] = list()
-    reference_scores: List[float] = list()
-    log_history: List[str] = list()
-    embedding_key: str
-    model: str
-    limit: int = 1000
-    from_date: Optional[str] = None
-    to_date: Optional[str] = None
-    response: str = ""
-    usage: Optional[Dict[str, Any]] = None
-    user_message: str = ""
-    breakdown: Dict[str, Any] = dict()
-    # hypothetical: List[str] = list()
+    ask: str
 
-    @classmethod
-    def date_to_str(cls, d: datetime):
-        return d.strftime(_date_format)
-
-    def get_from_date(self) -> datetime:
-        if self.from_date is None or self.from_date == "":
-            return None
-        return datetime.strptime(self.from_date, _date_format)
-
-    def set_from_date(self, d: datetime):
-        self.from_date = d.strftime(_date_format)
-
-    def get_to_date(self) -> datetime:
-        if self.to_date is None or self.to_date == "":
-            return None
-        return datetime.strptime(self.to_date, _date_format)
-
-    def set_to_date(self, d: datetime):
-        self.to_date = d.strftime(_date_format)
 
 class TopicNode(GraphNode):
     def __init__(self, text: str = None, topic_meta: TopicMeta = None, **kwargs):
@@ -63,6 +29,34 @@ class TopicNode(GraphNode):
     def update_topic_meta(self, topic_meta: TopicMeta) -> None:
         #self.meta.update(dict(topic_meta))
         self.meta = topic_meta
+
+class TopicSolverBase(BaseModel):
+    progress: float = 0.0
+    status: str = "initialised"
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    log_history: List[str] = list()
+    usage: Optional[Dict[str, Any]] = None
+    user_message: Optional[str] = ""
+    answer: Optional[str] = ""
+
+    @field_validator("from_date", "to_date", mode='before')
+    def validate_date(cls, obj: Any) -> datetime:
+        return _validate_date(obj=obj, date_validators=[strptime_ymdhms])
+
+    @field_serializer("from_date", "to_date")
+    def serialize_date(self, d: datetime):
+        return strftime_ymdhms(d)
+
+class DirectSimilarityTopicSolver(TopicSolverBase):
+    distance_threshold: float = 0.7
+    embedding_key: str
+    model: str
+    limit: int = 1000
+
+class TopicAnswer(BaseModel):
+    answer: str
+
 
 class TopicMatchRelationship(GraphRelationship):
     def __init__(self, score: float = None, match_type: str = None, **kwargs):
@@ -90,7 +84,7 @@ class TopicReference(BaseModel):
     title: str
     url: str
     similarity: float
- 
+
 
 class TopicSolverBase:
 
