@@ -9,21 +9,10 @@ from datetime import datetime
 from pydantic import BaseModel
 from jinja2 import Template
 from aisyng.base.tools.sql_interface import SQLAElement, SQLToolkit
-from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
-from aisyng.base.topic import TopicSolverBase, TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown
-from aisyng.base.embeddings import Embedder, EmbeddingPool
-from aisyng.base.tools.openai_models import create_embeddings, query_model, moderate_text, InappropriateContentException
-
-
-class TopicReference(BaseModel):
-    index: int
-    text: str
-    fact_type: str
-    citation: str
-    date: datetime
-    title: str
-    url: str
-    similarity: float
+from aisyng.base.models import GraphElement, GraphNode
+from aisyng.base.retrieval.topic import TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown, TopicReference
+from aisyng.base.embeddings import EmbeddingPool
+from aisyng.base.tools.openai_models import query_model, moderate_text, InappropriateContentException
 
 
 class EKBToolkit:

@@ -1,15 +1,13 @@
 from __future__ import annotations
-import logging
 import os
-from typing import List, Type, Dict, Tuple
+from typing import List, Tuple
 
-from sqlalchemy import String, ForeignKey, create_engine, select, case, true, Enum
+from sqlalchemy import ForeignKey, create_engine, select, case, true
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, scoped_session, aliased, Query
-from pgvector.sqlalchemy import Vector
 from datetime import datetime
 
-from aisyng.base.topic import TopicNode
+from base.retrieval.topic import TopicNode
 from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
 from aisyng.base.embeddings import Embedder, EmbeddingPool
 

@@ -27,7 +27,7 @@ class TopicMeta(BaseModel):
     usage: Optional[Dict[str, Any]] = None
     user_message: str = ""
     breakdown: Dict[str, Any] = dict()
-    hypothetical: List[str] = list()
+    # hypothetical: List[str] = list()
 
     @classmethod
     def date_to_str(cls, d: datetime):
@@ -61,7 +61,8 @@ class TopicNode(GraphNode):
         return TopicMeta.model_validate(self.meta)
 
     def update_topic_meta(self, topic_meta: TopicMeta) -> None:
-        self.meta.update(dict(topic_meta))
+        #self.meta.update(dict(topic_meta))
+        self.meta = topic_meta
 
 class TopicMatchRelationship(GraphRelationship):
     def __init__(self, score: float = None, match_type: str = None, **kwargs):
@@ -80,6 +81,16 @@ class TopicMatchRelationship(GraphRelationship):
 
         super().__init__(text="matches", **kwargs)
 
+class TopicReference(BaseModel):
+    index: int
+    text: str
+    fact_type: str
+    citation: str
+    date: datetime
+    title: str
+    url: str
+    similarity: float
+ 
 
 class TopicSolverBase:
 
