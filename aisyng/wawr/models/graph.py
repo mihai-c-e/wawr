@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Optional, List, Any, Callable, Dict
 from datetime import datetime
@@ -8,6 +10,7 @@ from aisyng.base.utils import (
     strptime_admyhmsgmt, strptime_ymdhms, strftime_ymdhms, strftime_ymd, strptime_ymd, _validate_date
 )
 from aisyng.base.models.graph import GraphElement
+from aisyng.base.models.payload import PayloadBase
 
 class WAWRGraphElementTypes(str, Enum):
     Abstract = "abstract"
@@ -43,7 +46,7 @@ class PaperVersions(BaseModel):
         return strftime_ymdhms(d)
 
 
-class PaperAbstract(BaseModel):
+class PaperAbstract(PayloadBase):
     id: str
     title: str
     abstract: str
@@ -60,6 +63,11 @@ class PaperAbstract(BaseModel):
     update_date: Optional[datetime] = None
     authors_parsed: List[List[str]] = list()
 
+    @classmethod
+    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
+        if model_dict.get("type_id") == WAWRGraphElementTypes.Abstract:
+            return cls.model_validate(model_dict)
+        return None
     @field_validator("date", mode='before')
     def validate_date(cls, obj: Any) -> datetime:
         return _validate_date(obj, date_validators=[strptime_ymdhms])
@@ -76,17 +84,30 @@ class PaperAbstract(BaseModel):
     def serialize_update_date(self, d: datetime) -> str:
         return strftime_ymd(d)
 
-class Fact(BaseModel):
+class Fact(PayloadBase):
     type: str
     text: str
     citation: Optional[str] = ""
     date: datetime
 
     @classmethod
+    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
+        if model_dict.get("type_id") == WAWRGraphElementTypes.Fact:
+            return cls.model_validate(model_dict)
+        return None
+
+    @classmethod
     def model_validate_with_date(cls, fact_dict: Dict[str, Any], date: datetime) -> "Fact":
         fact_dict['date'] = date
         return cls.model_validate(fact_dict)
 
-class Entity(BaseModel):
+
+class Entity(PayloadBase):
     name: str
+
+    @classmethod
+    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
+        if model_dict.get("type_id") == WAWRGraphElementTypes.Entity:
+            return cls.model_validate(model_dict)
+        return None
 

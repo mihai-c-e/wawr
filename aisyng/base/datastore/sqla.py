@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Callable, Any
+from typing import List, Callable, Any, Set, TypeVar
 
 from sqlalchemy import ForeignKey, Engine
 from sqlalchemy.dialects.postgresql import JSON
@@ -11,6 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from aisyng.base.embeddings import EmbeddingPool, Embedder
 from aisyng.base.models.graph import GraphElement, GraphNode, GraphRelationship, ScoredGraphElement
 from aisyng.base.datastore.base import PersistenceInterface
+from aisyng.base.models.base import PayloadBase
 
 
 class SQLABase(DeclarativeBase):
@@ -55,9 +56,15 @@ class SQLAPersistenceInterface(PersistenceInterface):
     embedding_pool: EmbeddingPool
     session_factory: Callable[[Any], Engine]
 
-    def __init__(self, embedding_pool: EmbeddingPool, session_factory: Callable[[Any], Engine]):
+    def __init__(
+            self,
+            embedding_pool: EmbeddingPool,
+            session_factory: Callable[[Any], Engine],
+            payload_types: Set[PayloadBase.__class__]
+    ):
         self.embedding_pool = embedding_pool
         self.session_factory = session_factory
+        self.payload_types = payload_types
 
     def find_by_similarity(
             self,
@@ -162,6 +169,8 @@ class SQLAPersistenceInterface(PersistenceInterface):
             element = GraphNode.model_validate(pass_kwargs)
         else:
             raise ValueError(f"Unkonwn record type: {obj.record_type}")
+        element.meta = self.model_validate_payload(obj.meta)
+
         return element
 
     def sql_to_element_list(self, objects: List[SQLAElement]) -> List[GraphElement]:

@@ -1,15 +1,26 @@
-from datetime import datetime
-from typing import List, Any
+from __future__ import annotations
 
-from aisyng.base.models.graph import GraphElement, ScoredGraphElement
+from datetime import datetime
+from typing import List, Any, Type, Dict, Set, TypeVar
+
+from aisyng.base.models.graph import GraphElement, ScoredGraphElement, GraphElementTypes
 from aisyng.base.embeddings import Embedder
+from aisyng.base.models.base import PayloadBase
 
 
 class PersistenceInterface:
+    payload_types: Set[PayloadBase.__class__] = {}
 
     def persist(self, objects_add: List[GraphElement] = None, objects_merge: List[GraphElement] = None,
                 **kwargs) -> bool:
         raise NotImplementedError()
+
+    def model_validate_payload(self, as_dict: Dict[str, Any]) -> PayloadBase | Dict[str, Any]:
+        for payload_type in self.payload_types:
+            attempted_object = payload_type.model_validate_or_none(as_dict)
+            if attempted_object is not None:
+                return attempted_object
+        return as_dict
 
     def find_by_similarity(
             self,

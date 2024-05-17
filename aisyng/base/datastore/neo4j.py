@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import List, Any
+from typing import List, Any, Set, TypeVar
 from neo4j import GraphDatabase, Transaction, ManagedTransaction
 from neo4j.graph import Node, Relationship, Path
 from pydantic import BaseModel
 
 from aisyng.base.datastore.base import PersistenceInterface
 from aisyng.base.models.graph import GraphElement, GraphNode, GraphRelationship
+from aisyng.base.models.base import PayloadBase
 
 _connection_uri = os.environ["AURA_CONNECTION_URI"]
 _user = os.environ["AURA_USERNAME"]
@@ -19,6 +20,9 @@ _auth = (_user, _password)
 
 
 class Neo4JPersistenceInterface(PersistenceInterface):
+
+    def __init__(self, payload_types: Set[PayloadBase.__class__]):
+        self.payload_types = payload_types
 
     def persist(self, objects_add: List[GraphElement] = None, objects_merge: List[GraphElement] = None,
                 **kwargs) -> bool:
@@ -134,13 +138,19 @@ class Neo4JPersistenceInterface(PersistenceInterface):
         properties = dict(node.items())
         if "meta" in properties:
             properties["meta"] = json.loads(properties["meta"])
-        return GraphNode.model_validate(properties)
+        node = GraphNode.model_validate(properties)
+        if "meta" in properties:
+            node.meta = self.model_validate_payload(properties["meta"])
+        return node
 
     def neo4j_rel_to_graph_rel(self, rel: Relationship) -> GraphRelationship:
         properties = dict(rel.items())
         if "meta" in properties:
             properties["meta"] = json.loads(properties["meta"])
-        return GraphRelationship.model_validate(properties)
+        rel = GraphRelationship.model_validate(properties)
+        if "meta" in properties:
+            rel.meta = self.model_validate_payload(properties["meta"])
+        return rel
 
 
 def _list_to_str(input_list: List[Any] | str, separator: str) -> str:

@@ -11,11 +11,17 @@ from aisyng.base.context import AppContext
 from aisyng.base.llms.base import InappropriateContentException, LLMName
 from aisyng.base.utils import strptime_ymdhms, strftime_ymdhms, _validate_date
 from aisyng.base.models.graph import ScoredGraphElement, GraphElementTypes, GraphNode, GraphRelationship, GraphElement
+from aisyng.base.models.base import PayloadBase
 
 
-class TopicMeta(BaseModel):
+class TopicMeta(PayloadBase):
     source_id: str
     ask: str
+    @classmethod
+    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
+        if model_dict.get("type_id") == GraphElementTypes.Topic:
+            return cls.model_validate(model_dict)
+        return None
 
 
 class TopicSolverCallback:
@@ -23,7 +29,7 @@ class TopicSolverCallback:
         raise NotImplementedError()
 
 
-class TopicSolverBase(BaseModel):
+class TopicSolverBase(PayloadBase):
     _callbacks: List[TopicSolverCallback] = list()
     progress: float = 0.0
     status: str = "initialised"
@@ -33,6 +39,7 @@ class TopicSolverBase(BaseModel):
     usage: Optional[Dict[str, Any]] = None
     user_message: Optional[str] = ""
     answer: Optional[str] = ""
+
 
     @field_validator("from_date", "to_date", mode='before')
     def validate_date(cls, obj: Any) -> datetime:
@@ -103,6 +110,14 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
     limit: int = 1000
     answer: Optional[str] = None
     prompt_template: str
+    solver_type: str="direct_similarity"
+
+    @classmethod
+    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
+        if (model_dict.get("type_id") == GraphElementTypes.TopicSolver
+                and model_dict.get('solver_type') == "direct_similarity"):
+            return cls.model_validate(model_dict)
+        return None
 
     def query_model(self, question: str, references: str, **kwargs) -> str:
         raise NotImplementedError()
@@ -153,19 +168,3 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
         return self
 
 
-class TopicMatchRelationship(GraphRelationship):
-    def __init__(self, score: float = None, match_type: str = None, **kwargs):
-        meta = kwargs.pop("meta", dict())
-        if score is None and meta.get("score") is None:
-            raise ValueError("Missing similarity score")
-        if match_type is None and meta.get("match_type") is None:
-            raise ValueError("Missing match type")
-
-        if score is not None:
-            meta["score"] = score
-        if match_type is not None:
-            meta["match_type"] = match_type
-        kwargs["type_id"] = "similar_to"
-        kwargs["meta"] = meta
-
-        super().__init__(text="matches", **kwargs)

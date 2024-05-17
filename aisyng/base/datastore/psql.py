@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from typing import List
+from typing import List, Set
 
 from sqlalchemy import create_engine, case, select, true
 from sqlalchemy.orm import scoped_session, sessionmaker, aliased, Query
@@ -8,6 +8,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, aliased, Query
 from aisyng.base.datastore.sqla import SQLAPersistenceInterface, SQLAElement
 from aisyng.base.embeddings import EmbeddingPool, Embedder
 from aisyng.base.models.graph import ScoredGraphElement
+from aisyng.base.models.base import PayloadBase
 
 _db_srv = os.environ["DATA_DB_SERVER"]
 _db_usr = os.environ["DATA_DB_USR"]
@@ -20,8 +21,8 @@ Session = scoped_session(sessionmaker(engine))
 
 
 class PSQLPersistenceInterface(SQLAPersistenceInterface):
-    def __init__(self, embedding_pool: EmbeddingPool):
-        super().__init__(embedding_pool=embedding_pool, session_factory=Session)
+    def __init__(self, embedding_pool: EmbeddingPool, payload_types: Set[PayloadBase.__class__]):
+        super().__init__(embedding_pool=embedding_pool, session_factory=Session, payload_types=payload_types)
 
     def find_by_similarity(
             self,

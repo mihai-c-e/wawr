@@ -16,7 +16,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "pandas", "openai", "langchain", "neo4j", "tiktoken", "scikit-learn",
-        "pgvector", "mistral"
+        "pgvector", "mistralai"
     ],
 
     keywords=['knowledge graphs', ],

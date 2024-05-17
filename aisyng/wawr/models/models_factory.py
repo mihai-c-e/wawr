@@ -2,7 +2,7 @@ from datetime import datetime
 
 from aisyng.wawr.models.graph import PaperAbstract, WAWRGraphElementTypes
 from aisyng.base.models.graph import GraphNode, GraphRelationship, GraphElementTypes
-from base.models.payload import TopicMeta, TopicSolverBase
+from aisyng.base.models.payload import TopicMeta, TopicSolverBase
 
 
 def get_abstract_node_id(node_info: PaperAbstract):

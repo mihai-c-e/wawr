@@ -30,6 +30,16 @@ class GraphElement(BaseModel):
     text_type: Optional[str] = None
     embeddings: Dict[str, List[float]] = dict()
 
+    @field_validator("meta")
+    def validate_meta(cls, v: Any) -> BaseModel | Dict:
+        if isinstance(v, BaseModel):
+            return v
+        if isinstance(v, str):
+            v = json.loads(v)
+        if not isinstance(v, dict):
+            raise ValueError(f"Don't know how to process type: {type(v)}")
+        return v
+
     @field_validator("source_id")
     def validate_source_id(cls, v: Any) -> str:
         return None if v is None else str(v)
