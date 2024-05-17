@@ -59,7 +59,7 @@ class Neo4JPersistenceInterface(PersistenceInterface):
             return self._create_relationship_tx(tx, element, merge)
 
     def _create_node_tx(self, tx: ManagedTransaction, element: GraphNode, merge: bool):
-        result = tx.run(f"MERGE (n:{element.type_id} {{id: $id}}) ON CREATE SET "
+        result = tx.run(f"MERGE (n:{element.type_id} {{id: $id}}) SET "
                         "n.`id`=$id, n.`created_date`=$created_date, n.`status`=$status, n.`text`=$text, "
                         "n.`type_id`=$type_id, n.`citation`=$citation, n.`source_id`=$source_id, "
                         "n.`text_type`=$text_type, n.`meta`=$meta"
@@ -76,7 +76,7 @@ class Neo4JPersistenceInterface(PersistenceInterface):
                         source_id=element.source_id or "",
                         title=element.title,
                         text_type=element.text_type or "",
-                        meta="{}" if isinstance(element.meta, BaseModel) else json.dumps(element.meta) if isinstance(
+                        meta="{}" if element.meta is None else json.dumps(element.meta) if isinstance(
                             element.meta, dict) else element.meta_model_dump_json()
                         )
 

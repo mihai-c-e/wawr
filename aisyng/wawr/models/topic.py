@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime
 from typing import Callable, List, Any, Optional, Dict
@@ -63,7 +65,12 @@ class TopicReference(BaseModel):
 
         )
 
+class TopicSolverCallback:
+    def state_changed(self, topic_solver: TopicSolverBase) -> None:
+        raise NotImplementedError()
+
 class TopicSolverBase(BaseModel):
+    _callbacks: List[TopicSolverCallback] = list()
     progress: float = 0.0
     status: str = "initialised"
     from_date: Optional[datetime] = None
@@ -79,7 +86,7 @@ class TopicSolverBase(BaseModel):
 
     @field_serializer("from_date", "to_date")
     def serialize_date(self, d: datetime):
-        return strftime_ymdhms(d)
+        return None if d is None else strftime_ymdhms(d)
 
     def _update_state(
             self,
@@ -97,10 +104,16 @@ class TopicSolverBase(BaseModel):
         if log_entry:
             self.log_history.append(f"{strftime_ymdhms(datetime.now())}: {log_entry}")
 
+        for callback in self._callbacks:
+            callback.state_changed(self)
+
+    def add_callback(self, callback: TopicSolverCallback):
+        self._callbacks.append(callback)
+
     def solve_internal(self, ask: str, ask_embeddings: List[float], context: AppContext, **kwargs):
         raise NotImplementedError()
 
-    def solve(self, ask: str, ask_embeddings: List[float], context: AppContext, **kwargs):
+    def solve(self, ask: str, ask_embeddings: List[float] | None, context: AppContext, **kwargs):
         try:
             llm = context.llm_providers.get_by_model_name(self.llm_name)
 

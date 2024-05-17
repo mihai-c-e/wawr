@@ -7,6 +7,7 @@ from aisyng.wawr.context import WAWRContext
 from aisyng.wawr.models.topic import DirectSimilarityTopicSolver
 from aisyng.wawr.models.models_factory import create_topic_node
 from aisyng.base.llms.base import LLMName
+from aisyng.wawr.workers import solve_topic
 
 wawr_context: WAWRContext = WAWRContext.create_default()
 
@@ -31,7 +32,7 @@ if __name__ == '__main__':
         limit=200,
         llm_name = LLMName.OPENAI_GPT_4_TURBO
     )
-    topic_solver.solve(topic_node=topic_node, context=wawr_context)
+    topic_solver_node = solve_topic(topic_node=topic_node, topic_solver=topic_solver, context=wawr_context)
     #answer = toolkit.topic_solver_v2(embedding_key=embedding_key, topic=question, meta=meta, in_thread=False)
     #test=break_down_question(question, "gpt-4-0125-preview")
     print("Done")

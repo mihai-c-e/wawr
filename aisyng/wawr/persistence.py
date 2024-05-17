@@ -24,6 +24,10 @@ class WAWRPersistence(MultiMediaPersist):
 
     def persist(self, objects_add: List[GraphElement] = None, objects_merge: List[GraphElement] = None,
                 merge_ignorable_duplicates: bool = True, **kwargs) -> bool:
+        if objects_add is None:
+            objects_add = list()
+        if objects_merge is None:
+            objects_merge = list()
         if merge_ignorable_duplicates:
             objects_add_new = list()
             objects_merge_new = list()
@@ -32,10 +36,8 @@ class WAWRPersistence(MultiMediaPersist):
                     objects_merge_new.append(obj)
                 else:
                     objects_add_new.append(obj)
-            if len(objects_merge_new) > 0:
-                if objects_merge is None:
-                    objects_merge = list()
-                objects_merge_new.extend(objects_merge)
+
+            objects_merge_new.extend(objects_merge)
             return super().persist(objects_add=objects_add_new, objects_merge=objects_merge_new, **kwargs)
         else:
             return super().persist(objects_add=objects_add, objects_merge=objects_merge)
