@@ -2,7 +2,7 @@ from datetime import datetime
 
 from aisyng.wawr.models.kb import PaperAbstract, GraphElementTypes
 from aisyng.base.models import GraphNode, GraphRelationship
-from aisyng.wawr.models.topic import TopicNode, TopicMeta
+from aisyng.wawr.models.topic import TopicMeta
 
 
 
@@ -48,18 +48,18 @@ def create_title_to_abstract_relationship(abstract_node: GraphNode, title_node: 
         date=abstract_node.date,
     )
 
-def create_topic_node(ask: str, source_id: str) -> TopicNode:
+def create_topic_node(ask: str, source_id: str) -> GraphNode:
     topic_meta = TopicMeta(ask=ask, source_id=source_id)
-    return TopicNode(
+    return GraphNode(
         text=ask,
         date=datetime.now(),
         title=ask,
         meta=topic_meta,
         type_id=GraphElementTypes.Topic,
-        source_id=source_id
+        source_id=source_id,
     )
 
-def create_topic_solver_relationship(topic_solver_node: TopicSolverNode, topic_node: TopicNode) -> GraphRelationship:
+def create_topic_solver_relationship(topic_solver_node: GraphNode, topic_node: GraphNode) -> GraphRelationship:
     return GraphRelationship(
         from_node=topic_solver_node,
         to_node=topic_node,
@@ -67,3 +67,4 @@ def create_topic_solver_relationship(topic_solver_node: TopicSolverNode, topic_n
         type_id=GraphElementTypes.IsSolvedBy,
         date=topic_solver_node.date
     )
+

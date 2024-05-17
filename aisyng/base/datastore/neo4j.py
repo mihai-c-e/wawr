@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
-from typing import List
+from typing import List, Any
 from neo4j import GraphDatabase, Transaction, ManagedTransaction
+from neo4j.graph import Node, Relationship, Path
 from pydantic import BaseModel
 
 from aisyng.base.datastore.base import PersistenceInterface
@@ -105,3 +108,48 @@ class Neo4JPersistenceInterface(PersistenceInterface):
                         )
 
         return result
+
+
+    def get_paths_between(
+            self,
+            from_node_ids: List[str],
+            to_node_label: str,
+            via_relationships: List[str],
+            **kwargs
+    ) -> Any:
+        ids_qp = _list_to_cypher_list(from_node_ids)
+        via_relationships_qp = _list_to_str(via_relationships, '|')
+        query = (f"MATCH path=(n1)-[r:{via_relationships_qp}]-(n2:{to_node_label}) "
+                 f"WHERE n2.id in {ids_qp} RETURN path")
+        with GraphDatabase.driver(_connection_uri, auth=_auth) as driver:
+            result = driver.execute_query(query)
+        paths = [self.neo4j_path_to_graph_elements(record[0]) for record in result[0]]
+        return paths
+
+    def neo4j_path_to_graph_elements(self, path: Path) -> List[GraphElement]:
+        return ([self.neo4j_node_to_graph_node(node) for node in path.nodes] +
+                [self.neo4j_rel_to_graph_rel(rel) for rel in path.relationships])
+
+    def neo4j_node_to_graph_node(self, node: Node) -> GraphNode:
+        properties = dict(node.items())
+        if "meta" in properties:
+            properties["meta"] = json.loads(properties["meta"])
+        return GraphNode.model_validate(properties)
+
+    def neo4j_rel_to_graph_rel(self, rel: Relationship) -> GraphRelationship:
+        properties = dict(rel.items())
+        if "meta" in properties:
+            properties["meta"] = json.loads(properties["meta"])
+        return GraphRelationship.model_validate(properties)
+
+
+def _list_to_str(input_list: List[Any] | str, separator: str) -> str:
+    if isinstance(input_list, str):
+        return input_list
+    if len(input_list) == 1:
+        return input_list[0]
+    return separator.join(input_list)
+
+def _list_to_cypher_list(input_list: List[Any]) -> str:
+    list_of_strings = [f"'{e}'" for e in input_list]
+    return f"[{_list_to_str(input_list=list_of_strings, separator=',')}]"

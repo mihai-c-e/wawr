@@ -1,13 +1,15 @@
 from typing import Optional, List, Dict
-from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
+from aisyng.base.llms.base import LLMProvider
 
 class Embedder:
     name: str
+    llm_provider: LLMProvider
     table: Optional[DeclarativeBase]
 
-    def __init__(self, name: str, table: DeclarativeBase = None):
+    def __init__(self, name: str, llm_provider: LLMProvider, table: DeclarativeBase = None):
         self.name = name
+        self.llm_provider = llm_provider
         self.table = table
 
     def create_embeddings(self, data: List[str], **kwargs) -> List[List[float]]:

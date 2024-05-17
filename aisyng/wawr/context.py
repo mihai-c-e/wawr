@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import cast
 
 from aisyng.base.context import AppContext
@@ -6,15 +7,31 @@ from aisyng.base.embeddings import EmbeddingPool
 from aisyng.wawr.persistence import WAWRPersistence
 from aisyng.base.datastore.psql import PSQLPersistenceInterface
 from aisyng.base.datastore.neo4j import Neo4JPersistenceInterface
+from aisyng.base.llms.base import LLMProviderPool
+from aisyng.base.llms.openai import OpenAIProvider
+from aisyng.base.llms.mistral import MistralProvider
 
+
+class WAWRLLMProviders(str, Enum):
+    OPENAI = "openai"
+    MISTRAL = "mistral"
 
 class WAWRContext(AppContext):
 
     @classmethod
     def create_default(cls):
+        openai_provider = OpenAIProvider()
+        mistral_provider = MistralProvider()
+        llm_providers = LLMProviderPool(
+            providers = {
+                WAWRLLMProviders.OPENAI: openai_provider,
+                WAWRLLMProviders.MISTRAL: mistral_provider
+            }
+        )
+
         embedding_pool = EmbeddingPool()
-        embedding_pool.add_embedder(TextEmbedding3Small())
-        embedding_pool.add_embedder(TextEmbedding3Small128())
+        embedding_pool.add_embedder(TextEmbedding3Small(llm_provider=openai_provider))
+        embedding_pool.add_embedder(TextEmbedding3Small128(llm_provider=openai_provider))
 
         persistence = WAWRPersistence(
             sqli = PSQLPersistenceInterface(embedding_pool=embedding_pool),
@@ -22,6 +39,7 @@ class WAWRContext(AppContext):
         )
 
         return WAWRContext(
+            llm_providers=llm_providers,
             persistence=persistence,
             embedding_pool=embedding_pool
         )

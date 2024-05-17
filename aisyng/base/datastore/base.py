@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Any
 
 from aisyng.base.models import GraphElement, ScoredGraphElement
 from aisyng.base.embeddings import Embedder
@@ -24,6 +24,15 @@ class PersistenceInterface:
             exclude_type_ids: List[str] = None,
             **kwargs
     ) -> List[ScoredGraphElement]:
+        raise NotImplementedError()
+
+    def get_paths_between(
+            self,
+            from_node_ids: List[str],
+            to_node_label: str,
+            via_relationships: List[str],
+            **kwargs
+    ) -> Any:
         raise NotImplementedError()
 
 class MultiMediaPersist(PersistenceInterface):

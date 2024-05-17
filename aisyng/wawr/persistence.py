@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List, cast
+from typing import List, cast, Any
 
 from sqlalchemy import select, Null
 from sqlalchemy.orm import aliased
@@ -163,4 +163,17 @@ class WAWRPersistence(MultiMediaPersist):
             only_type_ids=only_type_ids,
             exclude_type_ids=exclude_type_ids,
             **kwargs
+        )
+
+    def get_paths_between(
+            self,
+            from_node_ids: List[str],
+            to_node_label: str,
+            via_relationships: List[str],
+            **kwargs
+    ) -> Any:
+        return self.neo4ji.get_paths_between(
+            from_node_ids=from_node_ids,
+            to_node_label=to_node_label,
+            via_relationships=via_relationships
         )

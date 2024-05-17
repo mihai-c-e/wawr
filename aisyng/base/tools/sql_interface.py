@@ -7,7 +7,6 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker, scoped_session, aliased, Query
 from datetime import datetime
 
-from wawr.models.topic import TopicNode
 from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
 from aisyng.base.embeddings import Embedder, EmbeddingPool
 

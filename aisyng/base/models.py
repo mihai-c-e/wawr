@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Set, Dict, Any, Iterable, Optional, Union
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, ConfigDict
 import numpy as np
 
 
@@ -23,6 +23,10 @@ class GraphElement(BaseModel):
     text_type: Optional[str] = None
     embeddings: Dict[str, List[float]] = dict()
 
+    @field_validator("source_id")
+    def validate_source_id(cls, v: Any) -> str:
+        return None if v is None else str(v)
+
     def __init__(self, **kwargs):
         super().__init__(
             type_id=kwargs.pop("type_id", type(self).__name__),
@@ -33,6 +37,9 @@ class GraphElement(BaseModel):
 
     def __hash__(self):
         return self.id.__hash__()
+
+    def __eq__(self, other):
+        return isinstance(other, GraphNode) and self.__hash__() == other.__hash__()
 
     def meta_model_dump_json(self):
         return json.dumps(self.meta) if isinstance(self.meta, dict) else self.meta.model_dump_json()
