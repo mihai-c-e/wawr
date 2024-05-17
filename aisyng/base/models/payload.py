@@ -17,6 +17,8 @@ from aisyng.base.models.base import PayloadBase
 class TopicMeta(PayloadBase):
     source_id: str
     ask: str
+    type_id: str = GraphElementTypes.Topic
+
     @classmethod
     def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
         if model_dict.get("type_id") == GraphElementTypes.Topic:

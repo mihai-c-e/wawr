@@ -5,7 +5,7 @@ from typing import List, Any, Iterable, cast
 
 from jinja2 import Template
 from pydantic import BaseModel
-from aisyng.base.models.graph import GraphNode, ScoredGraphElement, GraphElement
+from aisyng.base.models.graph import GraphNode, ScoredGraphElement, GraphElement, GraphElementTypes
 from aisyng.base.models.payload import DirectSimilarityTopicSolverBase
 from aisyng.base.utils import strftime_ymd
 from aisyng.wawr.models.graph import WAWRGraphElementTypes
@@ -60,6 +60,8 @@ class TopicReference(BaseModel):
         )
 
 class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
+    type_id: str = GraphElementTypes.TopicSolver
+
     def __init__(self, **data: Any):
         data["prompt_template"] = ("This is a set of reference extracts from research papers, ordered by date:\n"
                                    "{{ references_as_text }}\n\n"
