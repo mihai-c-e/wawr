@@ -7,7 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, aliased, Query
 
 from aisyng.base.datastore.sqla import SQLAPersistenceInterface, SQLAElement
 from aisyng.base.embeddings import EmbeddingPool, Embedder
-from aisyng.base.models import GraphElement, ScoredGraphElement
+from aisyng.base.models.graph import ScoredGraphElement
 
 _db_srv = os.environ["DATA_DB_SERVER"]
 _db_usr = os.environ["DATA_DB_USR"]

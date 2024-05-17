@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from aisyng.wawr.models.kb import PaperAbstract, GraphElementTypes
-from aisyng.base.models import GraphNode, GraphRelationship
-from aisyng.wawr.models.topic import TopicMeta, TopicSolverBase
+from aisyng.wawr.models.graph import PaperAbstract, WAWRGraphElementTypes
+from aisyng.base.models.graph import GraphNode, GraphRelationship, GraphElementTypes
+from base.models.payload import TopicMeta, TopicSolverBase
 
 
 def get_abstract_node_id(node_info: PaperAbstract):
@@ -21,7 +21,7 @@ def create_abstract_node(abstract: PaperAbstract) -> GraphNode:
         date=abstract.date,
         title=abstract.title,
         meta=abstract,
-        type_id=GraphElementTypes.Abstract,
+        type_id=WAWRGraphElementTypes.Abstract,
     )
 
 def create_title_node_from_abstract_info(abstract_node: GraphNode) -> GraphNode:
@@ -32,18 +32,18 @@ def create_title_node_from_abstract_info(abstract_node: GraphNode) -> GraphNode:
         date=node_info.date,
         title=node_info.title,
         meta=node_info,
-        type_id=GraphElementTypes.Title,
+        type_id=WAWRGraphElementTypes.Title,
         source_id=node_info.id,
         text_type='title',
     )
 
 def create_title_to_abstract_relationship(abstract_node: GraphNode, title_node: GraphNode) -> GraphRelationship:
     return GraphRelationship(
-        id=get_relationship_id(title_node, GraphElementTypes.IsTitleOf, abstract_node),
+        id=get_relationship_id(title_node, WAWRGraphElementTypes.IsTitleOf, abstract_node),
         from_node=title_node,
         to_node=abstract_node,
         text="title of",
-        type_id=GraphElementTypes.IsTitleOf,
+        type_id=WAWRGraphElementTypes.IsTitleOf,
         date=abstract_node.date,
     )
 

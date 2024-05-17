@@ -4,12 +4,12 @@ from datetime import datetime
 
 import pandas as pd
 from pydantic import BaseModel, field_validator, field_serializer
-from aisyng.base.utils import strptime_admyhmsgmt, strptime_ymdhms, strftime_ymdhms, strftime_ymd, strptime_ymd
-from aisyng.base.models import GraphElement
-from aisyng.wawr.models._models_utils import _validate_date
+from aisyng.base.utils import (
+    strptime_admyhmsgmt, strptime_ymdhms, strftime_ymdhms, strftime_ymd, strptime_ymd, _validate_date
+)
+from aisyng.base.models.graph import GraphElement
 
-
-class GraphElementTypes(str, Enum):
+class WAWRGraphElementTypes(str, Enum):
     Abstract = "abstract"
     Title = "title"
     Fact = "fact",
@@ -17,20 +17,16 @@ class GraphElementTypes(str, Enum):
     Entity = "entity",
     EntityType = "entity_type"
 
-    Topic = "topic"
-    TopicSolver = "topic_solver"
-
     IsTitleOf = "is_title_of"
     IsExtractedFrom = "is_extracted_from"
     IsOfType = "is_of_type"
     IsA = "is_a"
-    IsSolvedBy="is_solved_by"
 
 def should_ignore_graph_element_duplicates(ge: GraphElement):
     return ge.type_id in [
-        GraphElementTypes.FactType,
-        GraphElementTypes.EntityType,
-        GraphElementTypes.Entity
+        WAWRGraphElementTypes.FactType,
+        WAWRGraphElementTypes.EntityType,
+        WAWRGraphElementTypes.Entity
     ]
 
 

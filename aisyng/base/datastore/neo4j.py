@@ -9,7 +9,7 @@ from neo4j.graph import Node, Relationship, Path
 from pydantic import BaseModel
 
 from aisyng.base.datastore.base import PersistenceInterface
-from aisyng.base.models import GraphElement, GraphNode, GraphRelationship
+from aisyng.base.models.graph import GraphElement, GraphNode, GraphRelationship
 
 _connection_uri = os.environ["AURA_CONNECTION_URI"]
 _user = os.environ["AURA_USERNAME"]

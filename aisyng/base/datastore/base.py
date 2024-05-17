@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Any
 
-from aisyng.base.models import GraphElement, ScoredGraphElement
+from aisyng.base.models.graph import GraphElement, ScoredGraphElement
 from aisyng.base.embeddings import Embedder
 
 

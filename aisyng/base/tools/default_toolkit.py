@@ -7,10 +7,9 @@ from threading import Thread
 from typing import List, Tuple, Dict, Any
 from jinja2 import Template
 from aisyng.base.tools.sql_interface import SQLAElement, SQLToolkit
-from aisyng.base.models import GraphElement, GraphNode
-from wawr.models.topic import TopicNode, TopicMatchRelationship, TopicMeta, TopicBreakdown, TopicReference
+from aisyng.wawr.models.payload import TopicBreakdown, TopicReference
+from base.models.payload import TopicMeta, TopicMatchRelationship
 from aisyng.base.embeddings import EmbeddingPool
-from base.llms.openai_models import query_model, moderate_text, InappropriateContentException
 
 
 class EKBToolkit:

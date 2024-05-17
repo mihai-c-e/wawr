@@ -5,7 +5,7 @@ from typing import List
 from aisyng.base.datastore.base import PersistenceInterface
 from aisyng.base.embeddings import EmbeddingPool
 from aisyng.base.llms.base import LLMProviderPool
-from aisyng.base.models import GraphElement
+from aisyng.base.models.graph import GraphElement
 import logging
 
 

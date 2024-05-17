@@ -4,7 +4,7 @@ load_dotenv('../../../wawr_ingestion.env')
 import datetime
 import logging
 from aisyng.wawr.context import WAWRContext
-from aisyng.wawr.models.topic import DirectSimilarityTopicSolver
+from aisyng.wawr.models.payload import DirectSimilarityTopicSolver
 from aisyng.wawr.models.models_factory import create_topic_node
 from aisyng.base.llms.base import LLMName
 from aisyng.wawr.workers import solve_topic

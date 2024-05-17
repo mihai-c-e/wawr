@@ -2,11 +2,18 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from enum import Enum
 from typing import List, Set, Dict, Any, Iterable, Optional, Union
 from uuid import uuid4
 
 from pydantic import BaseModel, field_validator, ConfigDict
 import numpy as np
+
+class GraphElementTypes(str, Enum):
+    Topic = "topic"
+    TopicSolver = "topic_solver"
+
+    IsSolvedBy = "is_solved_by"
 
 
 class GraphElement(BaseModel):

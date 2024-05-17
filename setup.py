@@ -7,14 +7,17 @@ LONG_DESCRIPTION = ''
 # Setting up
 setup(
     # the name must match the folder name 'verysimplemodule'
-    name="evola-constellations",
+    name="aisyng",
     version=VERSION,
     author="Mihai Ermaliuc",
-    author_email="mihai.ermaliuc@gmail.com",
+    author_email="mihai@aisyng.ai",
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     packages=find_packages(),
-    install_requires=["pandas", "openai", "langchain", "neo4j", "py2neo", "tiktoken", "scikit-learn"],
+    install_requires=[
+        "pandas", "openai", "langchain", "neo4j", "tiktoken", "scikit-learn",
+        "pgvector", "mistral"
+    ],
 
     keywords=['knowledge graphs', ],
     classifiers=[

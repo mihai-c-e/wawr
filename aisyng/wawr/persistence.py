@@ -8,8 +8,8 @@ from sqlalchemy.orm import aliased
 from aisyng.base.datastore.base import MultiMediaPersist
 from aisyng.base.datastore.sqla import SQLAPersistenceInterface, SQLAElement, SQLARelationship
 from aisyng.base.datastore.neo4j import Neo4JPersistenceInterface
-from aisyng.wawr.models.kb import GraphElementTypes, should_ignore_graph_element_duplicates
-from aisyng.base.models import GraphNode, GraphElement, GraphRelationship, ScoredGraphElement
+from aisyng.wawr.models.graph import WAWRGraphElementTypes, should_ignore_graph_element_duplicates
+from aisyng.base.models.graph import GraphElementTypes, GraphNode, GraphElement, GraphRelationship, ScoredGraphElement
 from aisyng.base.embeddings import Embedder
 
 
@@ -45,7 +45,7 @@ class WAWRPersistence(MultiMediaPersist):
     def get_last_ingested_abstract_id(self) -> str:
         with self.sqli.session_factory() as sess:
             stmt = select(SQLAElement).where(
-                SQLAElement.type_id == GraphElementTypes.Abstract
+                SQLAElement.type_id == WAWRGraphElementTypes.Abstract
             ).order_by(SQLAElement.id.desc()).limit(1)
             result = sess.execute(stmt).fetchone()
         logging.info(f"Last abstract id in database: {'none' if result is None else result[0].id}")
@@ -53,28 +53,28 @@ class WAWRPersistence(MultiMediaPersist):
 
     def get_abstracts_without_facts(self, limit: int = 10) -> List[GraphNode]:
         rels = select(SQLARelationship).where(
-                    SQLARelationship.type_id == GraphElementTypes.IsExtractedFrom
+            SQLARelationship.type_id == WAWRGraphElementTypes.IsExtractedFrom
                 ).subquery()
         with self.sqli.session_factory() as sess:
             stmt = select(SQLAElement).join(
                 rels,
                 onclause=SQLAElement.id==rels.c.to_node_id, isouter=True
             ).where(
-                (SQLAElement.type_id == GraphElementTypes.Abstract) &
+                (SQLAElement.type_id == WAWRGraphElementTypes.Abstract) &
                 (rels.c.to_node_id == None)
             ).order_by(SQLAElement.date.desc()).limit(limit)
             result = sess.execute(stmt).all()
             nodes = self.sqli.sql_to_element_list([n[0] for n in result])
         if len(nodes) > 0:
             logging.info(f"Loaded {len(nodes)} abstracts between {nodes[-1].date} and {nodes[0].date}")
-        return nodes
+        return cast(List[GraphNode], nodes)
 
     def get_parents_without_extracted_children(
             self,
-            parent_type_id: GraphElementTypes,
+            parent_type_id: WAWRGraphElementTypes,
             limit: int = 10) -> List[GraphNode]:
         rels = select(SQLARelationship).where(
-                    SQLARelationship.type_id == GraphElementTypes.IsExtractedFrom
+            SQLARelationship.type_id == WAWRGraphElementTypes.IsExtractedFrom
                 ).subquery()
         with self.sqli.session_factory() as sess:
             stmt = select(SQLAElement).join(
@@ -105,7 +105,7 @@ class WAWRPersistence(MultiMediaPersist):
     def get_all_facts_and_fact_types(self, limit: int) -> List[GraphNode]:
         with self.sqli.session_factory() as sess:
             stmt = select(SQLAElement).where(
-                SQLAElement.type_id.in_([GraphElementTypes.Fact, GraphElementTypes.FactType])
+                SQLAElement.type_id.in_([WAWRGraphElementTypes.Fact, WAWRGraphElementTypes.FactType])
             ).order_by(SQLAElement.date.desc()).limit(limit)
             result = sess.execute(stmt).all()
             nodes = self.sqli.sql_to_element_list([n[0] for n in result])
@@ -119,8 +119,8 @@ class WAWRPersistence(MultiMediaPersist):
                     from_node,
                     onclause=SQLARelationship.from_node_id==from_node.id
                 ).where(
-                (from_node.type_id==GraphElementTypes.Fact) &
-                SQLARelationship.type_id.in_([GraphElementTypes.IsExtractedFrom, GraphElementTypes.IsA])
+                (from_node.type_id == WAWRGraphElementTypes.Fact) &
+                SQLARelationship.type_id.in_([WAWRGraphElementTypes.IsExtractedFrom, WAWRGraphElementTypes.IsA])
             ).order_by(SQLAElement.date.desc()).limit(limit)
             result = sess.execute(stmt).all()
             nodes = self.sqli.sql_to_element_list([n[0] for n in result])

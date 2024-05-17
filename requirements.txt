@@ -1,13 +1,10 @@
 pandas
 openai
-langchain[all]
 ipython
 jupyter
 neo4j
-py2neo
 tiktoken
 chromadb
-faiss-cpu
 scikit-learn
 openpyxl
 hdbscan

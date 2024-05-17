@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from aisyng.base.embeddings import EmbeddingPool, Embedder
-from aisyng.base.models import GraphElement, GraphNode, GraphRelationship, ScoredGraphElement
+from aisyng.base.models.graph import GraphElement, GraphNode, GraphRelationship, ScoredGraphElement
 from aisyng.base.datastore.base import PersistenceInterface
 
 

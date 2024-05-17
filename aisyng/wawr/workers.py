@@ -1,5 +1,5 @@
-from aisyng.base.models import GraphNode
-from aisyng.wawr.models.topic import TopicSolverBase, TopicSolverCallback
+from aisyng.base.models.graph import GraphNode
+from aisyng.base.models.payload import TopicSolverCallback, TopicSolverBase
 from aisyng.wawr.models.models_factory import create_topic_solver_node, create_topic_solver_relationship
 from aisyng.wawr.context import WAWRContext
 
@@ -23,5 +23,5 @@ def solve_topic(topic_node: GraphNode, topic_solver: TopicSolverBase, context: W
 
     callback = TopicSolverPersistenceCallback(topic_solver_node=topic_solver_node, context=context)
     topic_solver.add_callback(callback)
-    topic_solver.solve(ask=topic_node.text, ask_embeddings=None, context=context)
+    topic_solver.solve(ask=topic_node.text, ask_embedding=None, context=context)
     return topic_solver_node
