@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from enum import Enum
 from typing import List, Optional, Dict, Any, Iterable
 
 from jinja2 import Template
@@ -12,6 +13,20 @@ from aisyng.base.llms.base import InappropriateContentException, LLMName
 from aisyng.base.utils import strptime_ymdhms, strftime_ymdhms, _validate_date
 from aisyng.base.models.graph import ScoredGraphElement, GraphElementTypes, GraphNode, GraphRelationship, GraphElement
 from aisyng.base.models.base import PayloadBase
+
+
+class TopicSolverStatus(str, Enum):
+    Initialised = "initialised"
+    Completed = "completed"
+    InternalError = "internal error"
+    InappropriateContent = "inappropriate content"
+    Retrieving = "retrieving"
+    Refining = "refining"
+    GeneratingAnswer = "generating answer"
+    BuildingReferences = "building references"
+    Embedding = "embedding"
+    Moderating = "moderating"
+    Solving = "solving"
 
 
 class TopicMeta(PayloadBase):
@@ -41,10 +56,12 @@ class TopicSolverBase(PayloadBase):
     usage: Optional[Dict[str, Any]] = None
     user_message: Optional[str] = ""
     answer: Optional[str] = ""
-
+    solver_type: str
 
     @field_validator("from_date", "to_date", mode='before')
-    def validate_date(cls, obj: Any) -> datetime:
+    def validate_date(cls, obj: Any) -> datetime | None:
+        if obj is None:
+            return None
         return _validate_date(obj=obj, date_validators=[strptime_ymdhms])
 
     @field_serializer("from_date", "to_date")
@@ -80,22 +97,22 @@ class TopicSolverBase(PayloadBase):
         try:
             llm = context.llm_providers.get_by_model_name(self.llm_name)
 
-            self._update_state(status="moderating", progress=0.0)
+            self._update_state(status=TopicSolverStatus.Moderating, progress=0.0)
             llm.moderate_text(text=ask)
 
-            self._update_state(status="solving", progress=0.1, log_entry="Moderation passed")
+            self._update_state(status=TopicSolverStatus.Solving, progress=0.1, log_entry="Moderation passed")
             self.solve_internal(ask=ask, ask_embedding=ask_embedding, context=context, **kwargs)
 
         except InappropriateContentException as ex:
             self._update_state(
-                status="Inappropriate content",
+                status=TopicSolverStatus.InappropriateContent,
                 progress=0.0,
                 user_message="Your question was flagged as inappropriate and will not be processed.",
                 log_entry=f"Error: {str(ex)}"
             )
         except Exception as ex:
             self._update_state(
-                status="Internal error",
+                status=TopicSolverStatus.InternalError,
                 progress=0.0,
                 user_message="There was an error processing your request. "
                              "We apologise for the inconvenience, please try again.",
@@ -112,7 +129,13 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
     limit: int = 1000
     answer: Optional[str] = None
     prompt_template: str
-    solver_type: str="direct_similarity"
+
+    def is_finished(self):
+        return self.status in [
+            TopicSolverStatus.InternalError,
+            TopicSolverStatus.InappropriateContent,
+            TopicSolverStatus.Completed
+        ]
 
     @classmethod
     def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
@@ -147,26 +170,26 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
     def solve_internal(self, ask: str, ask_embedding: List[float], context: AppContext, **kwargs):
         self._context = context
         if ask_embedding is None:
-            self._update_state(status="embedding", progress=0.1)
+            self._update_state(status=TopicSolverStatus.Embedding, progress=0.1)
             ask_embedding = context.embedding_pool.get_embedder(self.embedding_key).create_embeddings([ask])[0]
 
-        self._update_state(status="retrieving", progress=0.2, log_entry="Embeddings calculated")
+        self._update_state(status=TopicSolverStatus.Retrieving, progress=0.2, log_entry="Embeddings calculated")
         matched_nodes: List[ScoredGraphElement] = self.find_by_similarity(ask=ask, ask_embedding=ask_embedding)
 
-        self._update_state(status="refining", progress=0.5, log_entry="Initial matching complete")
+        self._update_state(status=TopicSolverStatus.Refining, progress=0.5, log_entry="Initial matching complete")
         matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes)
 
-        self._update_state(status="building references", progress=0.5, log_entry="Refined matching complete")
+        self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.5,
+                           log_entry="Refined matching complete")
         graph_elements = {element for element_list in matched_paths for element in element_list}
         reference_nodes = self.select_references(graph_elements=graph_elements)
         reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
         references_as_text = self.nodes_to_references_prompt_part(reference_nodes)
 
-        self._update_state(status="generating answer", progress=0.8, log_entry="References build complete")
+        self._update_state(status=TopicSolverStatus.GeneratingAnswer, progress=0.8,
+                           log_entry="References build complete")
         answer = self.query_model(question=ask, references=references_as_text)
         self.answer = answer
-        self._update_state(status="completed", progress=1.0, log_entry="Answer complete")
+        self._update_state(status=TopicSolverStatus.Completed, progress=1.0, log_entry="Answer complete")
 
         return self
-
-

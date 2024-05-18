@@ -78,6 +78,7 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
                                    f"Do not write references or bibliography at the end. "
                                    f"Do not write references, only insert indexes towards given references."
                                    )
+        data["solver_type"] = "direct_similarity"
         super().__init__(**data)
 
     def nodes_to_references_prompt_part(self, nodes: List[GraphNode]):
