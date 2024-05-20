@@ -20,6 +20,8 @@ if __name__ == '__main__':
     question = "Find arguments for language models being sentient"
     question = "What games can language models play?"
     question = "What language models have been tested on chess?"
+    question = "what is gpt-4?"
+
     # question = "What language models play starcraft?"
     #question = "How well do language models play chess?"
     embedding_key = "text-embedding-3-small-128"

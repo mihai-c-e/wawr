@@ -185,7 +185,8 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
             limit=self.limit,
             from_date=self.from_date,
             to_date=self.to_date,
-            exclude_text_types=["motivation"]
+            exclude_text_types=["motivation"],
+            exclude_type_ids=["entity"]
         )
 
     def solve_internal(self, ask: str, ask_embedding: List[float], context: AppContext, **kwargs):
@@ -196,6 +197,8 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
 
         self._update_state(status=TopicSolverStatus.Retrieving, progress=0.2, log_entry="Embeddings calculated")
         matched_nodes: List[ScoredGraphElement] = self.find_by_similarity(ask=ask, ask_embedding=ask_embedding)
+        print(matched_nodes)
+        logging.info(f"Found {len(matched_nodes)} matching nodes")
 
         self._update_state(status=TopicSolverStatus.Refining, progress=0.5, log_entry="Initial matching complete")
         matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes)
@@ -205,11 +208,13 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
         self.graph_relationships = list(
             {rel for rel_list in matched_paths for rel in rel_list if isinstance(rel, GraphRelationship)}
         )
+        logging.info(f"The graph has {len(self.graph_nodes)} nodes and {len(self.graph_relationships)} relationships")
 
         self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.5,
                            log_entry="Refined matching complete")
         reference_nodes = self.select_references(graph_elements=self.graph_nodes)
         self.reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
+        logging.info(f"selected {len(reference_nodes)} reference nodes")
         references_as_text = self.nodes_to_references_prompt_part(self.reference_nodes)
 
         self._update_state(status=TopicSolverStatus.GeneratingAnswer, progress=0.8,
