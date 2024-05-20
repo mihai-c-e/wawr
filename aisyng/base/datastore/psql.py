@@ -44,6 +44,8 @@ class PSQLPersistenceInterface(SQLAPersistenceInterface):
             to_date: datetime = None,
             only_type_ids: List[str] = None,
             exclude_type_ids: List[str] = None,
+            only_text_types: List[str] = None,
+            exclude_text_types: List[str] = None,
             **kwargs
     ) -> List[ScoredGraphElement]:
 
@@ -66,6 +68,8 @@ class PSQLPersistenceInterface(SQLAPersistenceInterface):
             & (true() if to_date is None else ((SQLAElement.date <= to_date) | (SQLAElement.date == None)))
             & (true() if only_type_ids is None else SQLAElement.type_id.in_(only_type_ids))
             & (true() if exclude_type_ids is None else SQLAElement.type_id.notin_(exclude_type_ids))
+            & (true() if only_text_types is None else SQLAElement.text_type.in_(only_text_types))
+            & (true() if exclude_text_types is None else SQLAElement.text_type.notin_(exclude_text_types))
         ).subquery())
         g = aliased(SQLAElement, subquery)
         e = aliased(embedder.table, subquery)

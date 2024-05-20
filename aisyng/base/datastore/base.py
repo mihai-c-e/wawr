@@ -34,6 +34,8 @@ class PersistenceInterface:
             to_date: datetime = None,
             only_type_ids: List[str] = None,
             exclude_type_ids: List[str] = None,
+            only_text_types: List[str] = None,
+            exclude_text_types: List[str] = None,
             **kwargs
     ) -> List[ScoredGraphElement]:
         raise NotImplementedError()

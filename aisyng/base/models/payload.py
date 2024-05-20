@@ -185,6 +185,7 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
             limit=self.limit,
             from_date=self.from_date,
             to_date=self.to_date,
+            exclude_text_types=["motivation"]
         )
 
     def solve_internal(self, ask: str, ask_embedding: List[float], context: AppContext, **kwargs):
