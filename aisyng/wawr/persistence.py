@@ -90,17 +90,8 @@ class WAWRPersistence(MultiMediaPersist):
             logging.info(f"Loaded {len(nodes)} elements between {nodes[-1].date} and {nodes[0].date}")
         return cast(List[GraphNode], nodes)
 
-    def get_node_by_id(self, id: str) -> GraphNode:
-        with self.sqli.session_factory() as sess:
-            stmt = select(SQLAElement).where(
-                (SQLAElement.id == id)
-            )
-            result = sess.execute(stmt).first()
-            result_list = list(result)
-            if len(result_list) == 0:
-                return None
-            node = self.sqli.sql_to_element(result_list[0])
-        return cast(GraphNode, node)
+    def get_graph_element_by_id(self, id: str) -> GraphElement:
+        return self.sqli.get_graph_element_by_id(id)
 
     def get_all_facts_and_fact_types(self, limit: int) -> List[GraphNode]:
         with self.sqli.session_factory() as sess:
@@ -170,12 +161,15 @@ class WAWRPersistence(MultiMediaPersist):
     def get_paths_between(
             self,
             from_node_ids: List[str],
-            to_node_label: str,
+            to_node_labels: List[str],
             via_relationships: List[str],
+            max_hops: int = -1,
             **kwargs
     ) -> Any:
         return self.neo4ji.get_paths_between(
             from_node_ids=from_node_ids,
-            to_node_label=to_node_label,
-            via_relationships=via_relationships
+            to_node_labels=to_node_labels,
+            via_relationships=via_relationships,
+            max_hops=max_hops,
+            **kwargs
         )

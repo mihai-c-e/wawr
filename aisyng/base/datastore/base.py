@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Any, Type, Dict, Set, TypeVar
+import concurrent.futures
 
 from aisyng.base.models.graph import GraphElement, ScoredGraphElement, GraphElementTypes
 from aisyng.base.embeddings import Embedder
@@ -15,12 +16,12 @@ class PersistenceInterface:
                 **kwargs) -> bool:
         raise NotImplementedError()
 
-    def model_validate_payload(self, as_dict: Dict[str, Any]) -> PayloadBase | Dict[str, Any]:
+    def create_payload_object_from_graph_dict(self, graph_element_dict: Dict[str, Any]) -> PayloadBase | Dict[str, Any]:
         for payload_type in self.payload_types:
-            attempted_object = payload_type.model_validate_or_none(as_dict)
+            attempted_object = payload_type.create_payload_object_from_graph_element_dict(graph_element_dict)
             if attempted_object is not None:
                 return attempted_object
-        return as_dict
+        return graph_element_dict.get("meta")
 
     def find_by_similarity(
             self,
@@ -46,6 +47,9 @@ class PersistenceInterface:
     ) -> Any:
         raise NotImplementedError()
 
+    def get_graph_element_by_id(self, id: str):
+        raise NotImplementedError()
+
 class MultiMediaPersist(PersistenceInterface):
 
     media_list: List[PersistenceInterface]
@@ -55,4 +59,5 @@ class MultiMediaPersist(PersistenceInterface):
 
     def persist(self, objects_add: List[GraphElement] = None, objects_merge: List[GraphElement] = None,
                 **kwargs) -> bool:
-        return all([m.persist(objects_add=objects_add, objects_merge=objects_merge, **kwargs) for m in self.media_list])
+        with concurrent.futures.ThreadPoolExecutor():
+            [m.persist(objects_add=objects_add, objects_merge=objects_merge, **kwargs) for m in self.media_list]

@@ -1,5 +1,8 @@
+from __future__ import annotations
 from enum import Enum
-from typing import cast
+from typing import cast, Callable, Any
+
+from sqlalchemy import Engine
 
 from aisyng.base.context import AppContext
 from aisyng.wawr.wawr_embeddings import TextEmbedding3Small, TextEmbedding3Small128
@@ -22,7 +25,7 @@ class WAWRLLMProviders(str, Enum):
 class WAWRContext(AppContext):
 
     @classmethod
-    def create_default(cls):
+    def create_default(cls, session_factory: Callable[[Any], Engine] = None) -> WAWRContext:
         openai_provider = OpenAIProvider()
         mistral_provider = MistralProvider()
         llm_providers = LLMProviderPool(
@@ -38,7 +41,11 @@ class WAWRContext(AppContext):
 
         payload_types = {TopicMeta, DirectSimilarityTopicSolver, PaperAbstract, Fact, Entity}
         persistence = WAWRPersistence(
-            sqli = PSQLPersistenceInterface(embedding_pool=embedding_pool, payload_types=payload_types),
+            sqli = PSQLPersistenceInterface(
+                embedding_pool=embedding_pool,
+                payload_types=payload_types,
+                session_factory=session_factory
+            ),
             neo4ji = Neo4JPersistenceInterface(payload_types=payload_types)
         )
 

@@ -35,9 +35,12 @@ class TopicMeta(PayloadBase):
     type_id: str = GraphElementTypes.Topic
 
     @classmethod
-    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
-        if model_dict.get("type_id") == GraphElementTypes.Topic:
-            return cls.model_validate(model_dict)
+    def create_payload_object_from_graph_element_dict(cls, data: Dict[str, Any]) -> PayloadBase | None:
+        meta = data.get("meta")
+        if meta is None:
+            return None
+        if meta["type_id"] == GraphElementTypes.Topic:
+            return cls(**meta)
         return None
 
 
@@ -56,6 +59,10 @@ class TopicSolverBase(PayloadBase):
     usage: Optional[Dict[str, Any]] = None
     user_message: Optional[str] = ""
     answer: Optional[str] = ""
+    prompt_template: str
+    graph_nodes: Optional[List[GraphNode]] = None
+    graph_relationships: Optional[List[GraphRelationship]] = None
+    reference_nodes: Optional[List[GraphNode]] = None
     solver_type: str
 
     @field_validator("from_date", "to_date", mode='before')
@@ -86,6 +93,15 @@ class TopicSolverBase(PayloadBase):
 
         for callback in self._callbacks:
             callback.state_changed(self)
+
+    def has_graph(self) -> bool:
+        return self.graph_elements is not None and len(self.graph_elements) > 0
+
+    def has_references(self) -> bool:
+        return self.reference_nodes is not None and len(self.reference_nodes) > 0
+
+    def has_answer(self) -> bool:
+        return self.answer is not None and self.answer != ""
 
     def add_callback(self, callback: TopicSolverCallback):
         self._callbacks.append(callback)
@@ -127,21 +143,25 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
     embedding_key: str
     llm_name: LLMName
     limit: int = 1000
-    answer: Optional[str] = None
-    prompt_template: str
 
-    def is_finished(self):
+
+    def is_finished(self) -> bool:
         return self.status in [
             TopicSolverStatus.InternalError,
             TopicSolverStatus.InappropriateContent,
             TopicSolverStatus.Completed
         ]
 
+    def has_graph(self) -> bool:
+        return
+
     @classmethod
-    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
-        if (model_dict.get("type_id") == GraphElementTypes.TopicSolver
-                and model_dict.get('solver_type') == "direct_similarity"):
-            return cls.model_validate(model_dict)
+    def create_payload_object_from_graph_element_dict(cls, data: Dict[str, Any]) -> PayloadBase | None:
+        meta = data.get("meta")
+        if meta is None:
+            return None
+        if meta["type_id"] == GraphElementTypes.TopicSolver and meta.get("solver_type") == "direct_similarity":
+            return cls(**meta)
         return None
 
     def query_model(self, question: str, references: str, **kwargs) -> str:
@@ -178,13 +198,18 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
 
         self._update_state(status=TopicSolverStatus.Refining, progress=0.5, log_entry="Initial matching complete")
         matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes)
+        self.graph_nodes = list(
+            {node for node_list in matched_paths for node in node_list if isinstance(node, GraphNode)}
+        )
+        self.graph_relationships = list(
+            {rel for rel_list in matched_paths for rel in rel_list if isinstance(rel, GraphRelationship)}
+        )
 
         self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.5,
                            log_entry="Refined matching complete")
-        graph_elements = {element for element_list in matched_paths for element in element_list}
-        reference_nodes = self.select_references(graph_elements=graph_elements)
-        reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
-        references_as_text = self.nodes_to_references_prompt_part(reference_nodes)
+        reference_nodes = self.select_references(graph_elements=self.graph_nodes)
+        self.reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
+        references_as_text = self.nodes_to_references_prompt_part(self.reference_nodes)
 
         self._update_state(status=TopicSolverStatus.GeneratingAnswer, progress=0.8,
                            log_entry="References build complete")

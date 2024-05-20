@@ -64,9 +64,12 @@ class PaperAbstract(PayloadBase):
     authors_parsed: List[List[str]] = list()
 
     @classmethod
-    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
-        if model_dict.get("type_id") == WAWRGraphElementTypes.Abstract:
-            return cls.model_validate(model_dict)
+    def create_payload_object_from_graph_element_dict(cls, data: Dict[str, Any]) -> PayloadBase | None:
+        meta = data.get("meta")
+        if meta is None:
+            return None
+        if meta["type_id"] == WAWRGraphElementTypes.Abstract:
+            return cls(**meta)
         return None
     @field_validator("date", mode='before')
     def validate_date(cls, obj: Any) -> datetime:
@@ -91,9 +94,12 @@ class Fact(PayloadBase):
     date: datetime
 
     @classmethod
-    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
-        if model_dict.get("type_id") == WAWRGraphElementTypes.Fact:
-            return cls.model_validate(model_dict)
+    def create_payload_object_from_graph_element_dict(cls, data: Dict[str, Any]) -> PayloadBase | None:
+        meta = data.get("meta")
+        if meta is None:
+            return None
+        if meta["type_id"] == WAWRGraphElementTypes.Fact:
+            return cls(**meta)
         return None
 
     @classmethod
@@ -104,10 +110,16 @@ class Fact(PayloadBase):
 
 class Entity(PayloadBase):
     name: str
+    type_id: Optional[str] = WAWRGraphElementTypes.Entity
 
     @classmethod
-    def model_validate_or_none(cls, model_dict: Dict[str, Any]) -> PayloadBase | None:
-        if model_dict.get("type_id") == WAWRGraphElementTypes.Entity:
-            return cls.model_validate(model_dict)
+    def create_payload_object_from_graph_element_dict(cls, data: Dict[str, Any]) -> PayloadBase | None:
+        meta = data.get("meta")
+        if meta is None:
+            return None
+        if meta["type_id"] == WAWRGraphElementTypes.Entity:
+            # TODO Temporary fix - this key might not exist in datastore
+            meta["name"] = data["text"]
+            return cls(**meta)
         return None
 

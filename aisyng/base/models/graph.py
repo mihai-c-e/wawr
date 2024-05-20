@@ -6,8 +6,10 @@ from enum import Enum
 from typing import List, Set, Dict, Any, Iterable, Optional, Union
 from uuid import uuid4
 
-from pydantic import BaseModel, field_validator, ConfigDict
-import numpy as np
+from pydantic import BaseModel, field_validator, ConfigDict, model_validator
+
+from aisyng.base.models.base import PayloadBase
+
 
 class GraphElementTypes(str, Enum):
     Topic = "topic"
@@ -20,29 +22,38 @@ class GraphElement(BaseModel):
     id: str
     created_date: datetime
     status: str = ""
-    meta: Union[BaseModel, Dict] = dict()
     text: str
     date: Optional[datetime] = None
     type_id: str
+    meta: Union[PayloadBase, Dict] = dict()
     citation: Optional[str] = ""
     source_id: Optional[str] = None
     title: Optional[str] = None
     text_type: Optional[str] = None
     embeddings: Dict[str, List[float]] = dict()
 
-    @field_validator("meta")
-    def validate_meta(cls, v: Any) -> BaseModel | Dict:
-        if isinstance(v, BaseModel):
+    @field_validator("meta", mode="after", )
+    def validate_meta(cls, v: Any) -> "GraphElement" | Dict[str, Any]:
+        if isinstance(v.meta, PayloadBase):
+            v.meta.type_id = v.type_id
             return v
-        if isinstance(v, str):
-            v = json.loads(v)
-        if not isinstance(v, dict):
+        if not isinstance(v.meta, dict):
             raise ValueError(f"Don't know how to process type: {type(v)}")
+        else:
+            v.meta['type_id'] = v.type_id
         return v
 
     @field_validator("source_id")
     def validate_source_id(cls, v: Any) -> str:
         return None if v is None else str(v)
+
+    """@model_validator(mode='after')
+    def check_passwords_match(self) -> Self:
+        pw1 = self.password1
+        pw2 = self.password2
+        if pw1 is not None and pw2 is not None and pw1 != pw2:
+            raise ValueError('passwords do not match')
+        return self"""
 
     def __init__(self, **kwargs):
         super().__init__(
@@ -77,10 +88,10 @@ class GraphNode(GraphElement):
 
 
 class GraphRelationship(GraphElement):
-    from_node: GraphNode = None
-    from_node_id: str = None
-    to_node: GraphNode = None
-    to_node_id: str = None
+    from_node: Optional[GraphNode] = None
+    from_node_id: Optional[str] = None
+    to_node: Optional[GraphNode] = None
+    to_node_id: Optional[str] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

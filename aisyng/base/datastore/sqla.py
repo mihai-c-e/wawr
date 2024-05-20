@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import List, Callable, Any, Set, TypeVar
 
-from sqlalchemy import ForeignKey, Engine
+from sqlalchemy import ForeignKey, Engine, select
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -79,6 +79,15 @@ class SQLAPersistenceInterface(PersistenceInterface):
             exclude_type_ids: List[str] = None, **kwargs
     ) -> List[ScoredGraphElement]:
         raise NotImplementedError
+
+    def get_graph_element_by_id(self, id: str) -> GraphElement:
+        with self.session_factory() as sess:
+            with sess.begin():
+                query = select(SQLAElement).where(SQLAElement.id == id)
+                result = list(sess.execute(query).first())
+                if len(result) == 0:
+                    raise ValueError(f"Element with id {id} not found")
+                return self.sql_to_element(result[0])
 
     def persist(
             self,
@@ -158,19 +167,19 @@ class SQLAPersistenceInterface(PersistenceInterface):
 
     def sql_to_element(self, obj: SQLAElement) -> GraphElement:
         pass_kwargs = {
-            "id": obj.id, "type_id": obj.type_id, "text": obj.text, "meta": obj.meta, "date": obj.date,
+            "id": obj.id, "type_id": obj.type_id, "text": obj.text, "meta": (obj.meta or dict()), "date": obj.date,
             "created_date": obj.created_date, "status": obj.status, "source_id": obj.source_id,
             "text_type": obj.text_type, "citation": obj.citation, "title": obj.title
         }
+        pass_kwargs["meta"]["type_id"] = pass_kwargs["type_id"]
+        pass_kwargs["meta"] = self.create_payload_object_from_graph_dict(pass_kwargs)
         if isinstance(obj, SQLARelationship):
             pass_kwargs.update({"from_node_id": obj.from_node_id, "to_node_id": obj.to_node_id})
-            element = GraphRelationship.model_validate(pass_kwargs)
+            element = GraphRelationship(**pass_kwargs)
         elif isinstance(obj, SQLAElement):
             element = GraphNode.model_validate(pass_kwargs)
         else:
             raise ValueError(f"Unkonwn record type: {obj.record_type}")
-        element.meta = self.model_validate_payload(obj.meta)
-
         return element
 
     def sql_to_element_list(self, objects: List[SQLAElement]) -> List[GraphElement]:

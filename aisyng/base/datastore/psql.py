@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
-from typing import List, Set
+from typing import List, Set, Callable, Any
 
-from sqlalchemy import create_engine, case, select, true
+from sqlalchemy import create_engine, case, select, true, Engine
 from sqlalchemy.orm import scoped_session, sessionmaker, aliased, Query
 
 from aisyng.base.datastore.sqla import SQLAPersistenceInterface, SQLAElement
@@ -21,8 +21,17 @@ Session = scoped_session(sessionmaker(engine))
 
 
 class PSQLPersistenceInterface(SQLAPersistenceInterface):
-    def __init__(self, embedding_pool: EmbeddingPool, payload_types: Set[PayloadBase.__class__]):
-        super().__init__(embedding_pool=embedding_pool, session_factory=Session, payload_types=payload_types)
+    def __init__(
+            self,
+            embedding_pool: EmbeddingPool,
+            payload_types: Set[PayloadBase.__class__],
+            session_factory: Callable[[Any], Engine] = None
+    ):
+        super().__init__(
+            embedding_pool=embedding_pool,
+            session_factory=session_factory or Session,
+            payload_types=payload_types
+        )
 
     def find_by_similarity(
             self,

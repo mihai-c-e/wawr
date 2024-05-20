@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Any, Iterable, cast
+from typing import List, Any, Iterable, cast, Dict
 
 from jinja2 import Template
 from pydantic import BaseModel
@@ -14,10 +14,16 @@ from aisyng.wawr.models.graph import WAWRGraphElementTypes
 def node_to_reference_prompt_part(node: GraphNode, index: int) -> str:
     if node.type_id == WAWRGraphElementTypes.Abstract:
         return abstract_node_to_reference_prompt(node, index)
+    if node.type_id == WAWRGraphElementTypes.Fact:
+        return fact_node_to_reference_prompt(node, index)
     raise NotImplementedError()
 
 def abstract_node_to_reference_prompt(node: GraphNode, index: int) -> str:
     return f'{index}. Paper date: {strftime_ymd(node.date)}\nPaper title: "{node.title}"\nPaper abstract: "{node.text}"'
+
+def fact_node_to_reference_prompt(node: GraphNode, index: int) -> str:
+    return (f'{index}. {node.text_type} in paper {node.title} from {strftime_ymd(node.date)}:\n'
+            f'"{node.text}"')
 
 def nodes_to_reference_prompt_part(nodes: List[GraphNode]) -> str:
     return "\n\n".join(
@@ -86,16 +92,36 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
 
     def refine_search(self, matched_nodes: List[ScoredGraphElement]) -> List[List[GraphElement]]:
         return self._context.persistence.get_paths_between(
-            from_node_ids=[mn.element.id for mn in matched_nodes],
-            to_node_label=WAWRGraphElementTypes.Abstract,
-            via_relationships=[WAWRGraphElementTypes.IsExtractedFrom, WAWRGraphElementTypes.IsTitleOf]
+            from_node_ids=[mn.element.id for mn in matched_nodes if mn.element.type_id == WAWRGraphElementTypes.Fact],
+            to_node_labels=[
+                WAWRGraphElementTypes.Abstract,
+                WAWRGraphElementTypes.FactType,
+                # WAWRGraphElementTypes.Entity
+            ],
+            via_relationships=[WAWRGraphElementTypes.IsExtractedFrom, WAWRGraphElementTypes.IsTitleOf],
+            max_hops=2
         )
 
     def select_references(self, graph_elements: Iterable[GraphElement]) -> List[GraphNode]:
-        return cast(
+        facts = set()
+        abstracts = set()
+        abstracts_dict: Dict[str, Dict[str, Any]] = {
+            element.id: {'abstract':element, 'facts': list()}
+            for element in graph_elements if element.type_id == WAWRGraphElementTypes.Abstract
+        }
+        for element in graph_elements:
+            if element.type_id == WAWRGraphElementTypes.Fact:
+                abstracts_dict[element.source_id]['facts'].append(element)
+        for abstract_id, d in abstracts_dict.items():
+            if len(d['facts']) != 1:
+                abstracts.add(d['abstract'])
+            else:
+                facts.add(d['facts'][0])
+        return list(facts) + list(abstracts)
+        """return cast(
             List[GraphNode]
 ,            [element for element in graph_elements if element.type_id == WAWRGraphElementTypes.Abstract]
-        )
+        )"""
 
     def query_model(self, question: str, references: str, **kwargs) -> str:
         prompt = Template(self.prompt_template).render(

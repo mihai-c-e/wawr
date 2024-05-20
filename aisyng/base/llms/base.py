@@ -46,6 +46,9 @@ class LLMProviderPool:
     def __init__(self, providers: Dict[str, LLMProvider]):
         self.providers = providers
 
+    def get(self, provider_code: str) -> LLMProvider:
+        return self.providers[provider_code]
+
     def get_by_model_name(self, model_name: LLMName):
         provider = llm_provider_mapping.get(model_name)
         if provider is None:

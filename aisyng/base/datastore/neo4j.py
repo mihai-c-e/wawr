@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import List, Any, Set, TypeVar
-from neo4j import GraphDatabase, Transaction, ManagedTransaction
-from neo4j.graph import Node, Relationship, Path
-from pydantic import BaseModel
+from typing import List, Any, Set, Dict
+from neo4j import GraphDatabase, ManagedTransaction
+from neo4j.graph import Node, Relationship, Path, Entity
 
 from aisyng.base.datastore.base import PersistenceInterface
 from aisyng.base.models.graph import GraphElement, GraphNode, GraphRelationship
@@ -117,14 +116,17 @@ class Neo4JPersistenceInterface(PersistenceInterface):
     def get_paths_between(
             self,
             from_node_ids: List[str],
-            to_node_label: str,
+            to_node_labels: List[str],
             via_relationships: List[str],
+            max_hops: int = -1,
             **kwargs
     ) -> Any:
         ids_qp = _list_to_cypher_list(from_node_ids)
         via_relationships_qp = _list_to_str(via_relationships, '|')
-        query = (f"MATCH path=(n1)-[r:{via_relationships_qp}]-(n2:{to_node_label}) "
-                 f"WHERE n2.id in {ids_qp} RETURN path")
+        to_node_labels_qp = _list_to_str(to_node_labels, '|')
+        hops_query_part = f"*1..{max_hops}" if max_hops > 0 else ""
+        query = (f"MATCH path=(n1)-[r:{via_relationships_qp}{hops_query_part}]-(n2:{to_node_labels_qp}) "
+                 f"WHERE n1.id in {ids_qp} RETURN path")
         with GraphDatabase.driver(_connection_uri, auth=_auth) as driver:
             result = driver.execute_query(query)
         paths = [self.neo4j_path_to_graph_elements(record[0]) for record in result[0]]
@@ -134,23 +136,29 @@ class Neo4JPersistenceInterface(PersistenceInterface):
         return ([self.neo4j_node_to_graph_node(node) for node in path.nodes] +
                 [self.neo4j_rel_to_graph_rel(rel) for rel in path.relationships])
 
+    def _properties_to_dict(self, node_or_rel: Entity) -> Dict[str, Any]:
+        properties = dict(node_or_rel.items())
+        #TODO Temporary fix, ensure that meta is always part of the data model
+        if not "meta" in properties:
+            properties["meta"] = dict()
+        else:
+            properties["meta"] = json.loads(properties["meta"]) or dict()
+        if not isinstance(properties, dict):
+            raise ValueError(f"Expected dict, got {type(properties['meta'])} when loading graph node")
+        properties["meta"]["type_id"] = properties.get("type_id")
+        return properties
+
     def neo4j_node_to_graph_node(self, node: Node) -> GraphNode:
-        properties = dict(node.items())
-        if "meta" in properties:
-            properties["meta"] = json.loads(properties["meta"])
-        node = GraphNode.model_validate(properties)
-        if "meta" in properties:
-            node.meta = self.model_validate_payload(properties["meta"])
-        return node
+        properties = self._properties_to_dict(node)
+        properties["meta"] = self.create_payload_object_from_graph_dict(properties)
+        return GraphNode(**properties)
 
     def neo4j_rel_to_graph_rel(self, rel: Relationship) -> GraphRelationship:
-        properties = dict(rel.items())
-        if "meta" in properties:
-            properties["meta"] = json.loads(properties["meta"])
-        rel = GraphRelationship.model_validate(properties)
-        if "meta" in properties:
-            rel.meta = self.model_validate_payload(properties["meta"])
-        return rel
+        properties = self._properties_to_dict(rel)
+        properties["from_node_id"] = dict(rel.start_node)["id"]
+        properties["to_node_id"] = dict(rel.end_node)["id"]
+        properties["meta"] = self.create_payload_object_from_graph_dict(properties)
+        return GraphRelationship(**properties)
 
 
 def _list_to_str(input_list: List[Any] | str, separator: str) -> str:
