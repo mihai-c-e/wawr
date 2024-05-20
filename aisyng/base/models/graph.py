@@ -43,6 +43,12 @@ class GraphElement(BaseModel):
             v.meta['type_id'] = v.type_id
         return v
 
+    @field_validator("date", mode="before")
+    def validate_date(cls, v: Any) -> Any:
+        if isinstance(v, str) and v.lower() == 'null':
+            return None
+        return v
+
     @field_validator("source_id")
     def validate_source_id(cls, v: Any) -> str:
         return None if v is None else str(v)

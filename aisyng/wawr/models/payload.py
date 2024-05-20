@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Any, Iterable, cast, Dict
+from typing import List, Any, Iterable, cast, Dict, Set
 
 from jinja2 import Template
 from pydantic import BaseModel
@@ -98,7 +98,11 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
                 WAWRGraphElementTypes.FactType,
                 # WAWRGraphElementTypes.Entity
             ],
-            via_relationships=[WAWRGraphElementTypes.IsExtractedFrom, WAWRGraphElementTypes.IsTitleOf],
+            via_relationships=[
+                WAWRGraphElementTypes.IsExtractedFrom,
+                WAWRGraphElementTypes.IsTitleOf,
+                WAWRGraphElementTypes.IsA
+            ],
             max_hops=2
         )
 
@@ -109,11 +113,15 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
             element.id: {'abstract':element, 'facts': list()}
             for element in graph_elements if element.type_id == WAWRGraphElementTypes.Abstract
         }
+        force_abstract_ids: Set[str] = set()
         for element in graph_elements:
             if element.type_id == WAWRGraphElementTypes.Fact:
                 abstracts_dict[element.source_id]['facts'].append(element)
+            elif element.type_id == WAWRGraphElementTypes.Title:
+                # If we matched a title, the abstract goes into references automatically
+                force_abstract_ids.add(element.source_id)
         for abstract_id, d in abstracts_dict.items():
-            if len(d['facts']) != 1:
+            if len(d['facts']) != 1 or abstract_id in force_abstract_ids:
                 abstracts.add(d['abstract'])
             else:
                 facts.add(d['facts'][0])
