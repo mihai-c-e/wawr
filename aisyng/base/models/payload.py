@@ -197,30 +197,44 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
 
         self._update_state(status=TopicSolverStatus.Retrieving, progress=0.2, log_entry="Embeddings calculated")
         matched_nodes: List[ScoredGraphElement] = self.find_by_similarity(ask=ask, ask_embedding=ask_embedding)
-        print(matched_nodes)
         logging.info(f"Found {len(matched_nodes)} matching nodes")
+        user_msg = ""
+        if len(matched_nodes) > 0:
+            if len(matched_nodes) == self.limit:
+                user_msg = ("There could be more data points relevant to your query in the knowledge base. "
+                            "You might want to narrow down the timeframe, increase precision, or ask "
+                            "a more focused question.")
+            self._update_state(status=TopicSolverStatus.Refining, progress=0.5, log_entry="Initial matching complete")
+            matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes)
+            self.graph_nodes = list(
+                {node for node_list in matched_paths for node in node_list if isinstance(node, GraphNode)}
+            )
+            self.graph_relationships = list(
+                {rel for rel_list in matched_paths for rel in rel_list if isinstance(rel, GraphRelationship)}
+            )
+            logging.info(f"The graph has {len(self.graph_nodes)} nodes and {len(self.graph_relationships)} relationships")
 
-        self._update_state(status=TopicSolverStatus.Refining, progress=0.5, log_entry="Initial matching complete")
-        matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes)
-        self.graph_nodes = list(
-            {node for node_list in matched_paths for node in node_list if isinstance(node, GraphNode)}
+            self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.5,
+                               log_entry="Refined matching complete")
+            reference_nodes = self.select_references(graph_elements=self.graph_nodes)
+            self.reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
+            logging.info(f"selected {len(reference_nodes)} reference nodes")
+            references_as_text = self.nodes_to_references_prompt_part(self.reference_nodes)
+
+            self._update_state(status=TopicSolverStatus.GeneratingAnswer, progress=0.8,
+                               log_entry="References build complete")
+            answer = self.query_model(question=ask, references=references_as_text)
+            self.answer = answer
+        else:
+            self.answer = ("No data points relevant to your query were found in the knowledge base. "
+                           "Try to lower precision,"
+                           " extend the timeframe, or re-formulate your question.")
+
+        self._update_state(
+            status=TopicSolverStatus.Completed,
+            progress=1.0,
+            log_entry="Answer complete",
+            user_message=user_msg
         )
-        self.graph_relationships = list(
-            {rel for rel_list in matched_paths for rel in rel_list if isinstance(rel, GraphRelationship)}
-        )
-        logging.info(f"The graph has {len(self.graph_nodes)} nodes and {len(self.graph_relationships)} relationships")
-
-        self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.5,
-                           log_entry="Refined matching complete")
-        reference_nodes = self.select_references(graph_elements=self.graph_nodes)
-        self.reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
-        logging.info(f"selected {len(reference_nodes)} reference nodes")
-        references_as_text = self.nodes_to_references_prompt_part(self.reference_nodes)
-
-        self._update_state(status=TopicSolverStatus.GeneratingAnswer, progress=0.8,
-                           log_entry="References build complete")
-        answer = self.query_model(question=ask, references=references_as_text)
-        self.answer = answer
-        self._update_state(status=TopicSolverStatus.Completed, progress=1.0, log_entry="Answer complete")
 
         return self
