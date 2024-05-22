@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from enum import Enum
-from typing import List, Tuple, Any, Dict
+from typing import List, Tuple, Any, Dict, Optional, Callable
 
 from openai import OpenAI
 from openai._types import NotGiven, NOT_GIVEN
@@ -17,9 +17,11 @@ class InappropriateContentException(Exception):
 
 class LLMName(str, Enum):
     OPENAI_GPT_4_TURBO = "gpt-4-turbo"
+    OPENAI_GPT_35_TURBO = "gpt-3.5-turbo"
 
 llm_provider_mapping = {
-    LLMName.OPENAI_GPT_4_TURBO: 'openai'
+    LLMName.OPENAI_GPT_4_TURBO: 'openai',
+    LLMName.OPENAI_GPT_35_TURBO: "openai"
 }
 
 
@@ -39,6 +41,16 @@ class LLMProvider:
 
     def moderate_text(self, text: str) -> Any:
         raise NotImplementedError()
+
+    def query_model_threaded(
+            self,
+            data: List[Any],
+            preprocess_fn: Optional[Callable[[Any], Any]] = None,
+            model: str = LLMName.OPENAI_GPT_35_TURBO,
+            temperature: float = 0.1,
+            **kwargs
+    ) -> List[Any]:
+        raise NotImplementedError
 
 class LLMProviderPool:
     providers: Dict[str, LLMProvider]

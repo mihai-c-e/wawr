@@ -74,10 +74,14 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
                                    "Based on the knowledge from the references above, infer an answer as complete as "
                                    "possible to the following ask: "
                                    "\"{{ question }}\".\n"
-                                   f"Address what is explicitly stated in the given references, then try to infer "
-                                   f"a conclusion. Use the references and nothing else. If the referenecs"
-                                   f"are missing or if they are irrelevant, answer with this. "
-                                   f"Do not output anything after the conclusion. Format the text "
+                                   f"Answer based on what is explicitly stated in the given references. "
+                                   f"Take a deep breath and answer thoroughly by looking at each reference in turn and, "
+                                   f"if the reference "
+                                   f"is relevant for the ask, mention it in your answer. Infer "
+                                   f"a conclusion at the end. Use the references and nothing else. If the referenecs"
+                                   f"are missing or if they are irrelevant, say that in your answer. "
+                                   f"End your answer with a conclusion. Do not output anything after the conclusion. "
+                                   f"Format the text "
                                    f"using html tags, ready to insert as-is into a html page, using text formatting. "
                                    f"Quote the facts above in your answer in [1][2] format. "
                                    f"Do not list references, only use numbers in your answer to refer to the facts. "
@@ -92,9 +96,9 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
     def nodes_to_references_prompt_part(self, nodes: List[GraphNode]):
         return nodes_to_reference_prompt_part(nodes)
 
-    def refine_search(self, matched_nodes: List[ScoredGraphElement]) -> List[List[GraphElement]]:
+    def refine_search(self, matched_nodes: List[GraphNode]) -> List[List[GraphElement]]:
         return self._context.persistence.get_paths_between(
-            from_node_ids=[mn.element.id for mn in matched_nodes if mn.element.type_id == WAWRGraphElementTypes.Fact],
+            from_node_ids=[node.id for node in matched_nodes if node.type_id == WAWRGraphElementTypes.Fact],
             to_node_labels=[
                 WAWRGraphElementTypes.Abstract,
                 WAWRGraphElementTypes.FactType,

@@ -21,6 +21,7 @@ if __name__ == '__main__':
     question = "What games can language models play?"
     question = "What language models have been tested on chess?"
     question = "what is gpt-4?"
+    question = "Does GPT-3.5 outperform GPT-4 on any topics?"
 
     # question = "What language models play starcraft?"
     #question = "How well do language models play chess?"

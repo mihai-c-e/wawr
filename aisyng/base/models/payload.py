@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any, Iterable
+from typing import List, Optional, Dict, Any, Iterable, Callable, cast
 
 from jinja2 import Template
 from pydantic import BaseModel, field_validator, field_serializer
@@ -22,11 +22,21 @@ class TopicSolverStatus(str, Enum):
     InappropriateContent = "inappropriate content"
     Retrieving = "retrieving"
     Refining = "refining"
+    RetrievingGraph="retrieving graph"
     GeneratingAnswer = "generating answer"
     BuildingReferences = "building references"
     Embedding = "embedding"
     Moderating = "moderating"
     Solving = "solving"
+
+
+_reference_answer_template = Template(
+    "Title:\"{{ title }}\"\n"
+    "Abstract: \"{{ abstract }}\"\n\n"
+    "Based on the abstract above, infer and justify an answer to this ask: "
+    "\"{{ ask }}\". "
+    "If the abstract is not informative for answering the question, output just \"irrelevant\", without any justification."
+)
 
 
 class TopicMeta(PayloadBase):
@@ -109,6 +119,26 @@ class TopicSolverBase(PayloadBase):
     def solve_internal(self, ask: str, ask_embeddings: List[float], context: AppContext, **kwargs):
         raise NotImplementedError()
 
+    def query_model_on_nodes(
+            self,
+            nodes: List[GraphNode],
+            node_transformer: Callable[[GraphNode], str],
+            model: LLMName,
+            temperature: float,
+            parallelism: int = 50,
+            **kwargs
+    ):
+        return self._context.llm_providers.get_by_model_name(
+            model
+        ).query_model_threaded(
+            data=nodes,
+            preprocess_fn=node_transformer,
+            model=model,
+            temperature=temperature,
+            parallelism=parallelism,
+            **kwargs
+        )
+
     def solve(self, ask: str, ask_embedding: List[float] | None, context: AppContext, **kwargs):
         try:
             llm = context.llm_providers.get_by_model_name(self.llm_name)
@@ -144,7 +174,6 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
     llm_name: LLMName
     limit: int = 1000
 
-
     def is_finished(self) -> bool:
         return self.status in [
             TopicSolverStatus.InternalError,
@@ -170,7 +199,10 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
     def nodes_to_references_prompt_part(self, nodes: List[GraphNode]):
         raise NotImplementedError()
 
-    def refine_search(self, matched_nodes: List[ScoredGraphElement]) -> List[List[GraphElement]]:
+    def nodes_with_substitute_content_to_references_prompt_part(self, nodes: List[GraphNode], content: List[str]):
+        raise NotImplementedError()
+
+    def refine_search(self, matched_nodes: List[GraphNode]) -> List[List[GraphElement]]:
         raise NotImplementedError()
 
     def select_references(self, graph_elements: Iterable[GraphElement]) -> List[GraphNode]:
@@ -196,29 +228,51 @@ class DirectSimilarityTopicSolverBase(TopicSolverBase):
             ask_embedding = context.embedding_pool.get_embedder(self.embedding_key).create_embeddings([ask])[0]
 
         self._update_state(status=TopicSolverStatus.Retrieving, progress=0.2, log_entry="Embeddings calculated")
-        matched_nodes: List[ScoredGraphElement] = self.find_by_similarity(ask=ask, ask_embedding=ask_embedding)
-        logging.info(f"Found {len(matched_nodes)} matching nodes")
+        matched_nodes_scored: List[ScoredGraphElement] = self.find_by_similarity(ask=ask, ask_embedding=ask_embedding)
+        matched_nodes = cast(
+            List[GraphNode],
+            [node.element for node in matched_nodes_scored]
+        )
+        logging.info(f"Found {len(matched_nodes_scored)} matching nodes")
+        def template_fn(data):
+            return _reference_answer_template.render(title=data.title, abstract=data.text, ask=ask)
+
+        self._update_state(status=TopicSolverStatus.Refining, progress=0.4, log_entry="Initial matching complete")
+        logging.info(f"Getting partial answers on {len(matched_nodes)} nodes")
+        reference_model_responses = self.query_model_on_nodes(
+            nodes=matched_nodes,
+            node_transformer=template_fn,
+            model=LLMName.OPENAI_GPT_35_TURBO,
+            temperature=0.1,
+            parallelism=400
+        )
+
+        matched_nodes_filtered = [node for i, node in enumerate(matched_nodes) if
+                                'irrelevant' not in reference_model_responses[i][0].lower()]
+
         user_msg = ""
         if len(matched_nodes) > 0:
-            if len(matched_nodes) == self.limit:
+            if len(matched_nodes_filtered) == self.limit:
                 user_msg = ("There could be more data points relevant to your query in the knowledge base. "
                             "You might want to narrow down the timeframe, increase precision, or ask "
                             "a more focused question.")
-            self._update_state(status=TopicSolverStatus.Refining, progress=0.5, log_entry="Initial matching complete")
-            matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes)
+            self._update_state(status=TopicSolverStatus.RetrievingGraph, progress=0.6, log_entry="Initial matching complete")
+            matched_paths: List[List[GraphElement]] = self.refine_search(matched_nodes=matched_nodes_filtered)
             self.graph_nodes = list(
                 {node for node_list in matched_paths for node in node_list if isinstance(node, GraphNode)}
             )
             self.graph_relationships = list(
                 {rel for rel_list in matched_paths for rel in rel_list if isinstance(rel, GraphRelationship)}
             )
-            logging.info(f"The graph has {len(self.graph_nodes)} nodes and {len(self.graph_relationships)} relationships")
+            logging.info(
+                f"The graph has {len(self.graph_nodes)} nodes and {len(self.graph_relationships)} relationships")
 
-            self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.5,
+            self._update_state(status=TopicSolverStatus.BuildingReferences, progress=0.8,
                                log_entry="Refined matching complete")
             reference_nodes = self.select_references(graph_elements=self.graph_nodes)
             self.reference_nodes = sorted(reference_nodes, key=lambda x: x.date)[::-1]
             logging.info(f"selected {len(reference_nodes)} reference nodes")
+
             references_as_text = self.nodes_to_references_prompt_part(self.reference_nodes)
 
             self._update_state(status=TopicSolverStatus.GeneratingAnswer, progress=0.8,

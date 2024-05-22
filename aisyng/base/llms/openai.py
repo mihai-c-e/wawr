@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List, Tuple, Any
+import concurrent.futures
+from functools import partial
+from typing import List, Tuple, Any, Optional, Callable
 from openai import OpenAI
 from openai._types import NotGiven, NOT_GIVEN
-from aisyng.base.llms.base import LLMProvider, InappropriateContentException
+from aisyng.base.llms.base import LLMProvider, InappropriateContentException, LLMName
 
 client = OpenAI(
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -15,10 +17,11 @@ class OpenAIProvider(LLMProvider):
     def query_model(
             self,
             query: str,
-            model: str = "gpt-3.5-turbo",
+            model: LLMName = LLMName.OPENAI_GPT_35_TURBO,
             temperature: float = 0.1,
             **kwargs
      ) -> Tuple[str, Any]:
+        logging.info(f"Querying model: {model}")
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -30,7 +33,35 @@ class OpenAIProvider(LLMProvider):
             temperature=temperature,
             **kwargs
         )
+        logging.info("Response received")
         return chat_completion.choices[0].message.content, chat_completion
+
+    def query_model_threaded(
+            self,
+            data: List[Any],
+            preprocess_fn: Optional[Callable[[Any], Any]] = None,
+            model: LLMName = LLMName.OPENAI_GPT_35_TURBO,
+            temperature: float = 0.1,
+                        parallelism: int=50,
+            **kwargs
+    ) -> List[Any]:
+        if preprocess_fn is None:
+            fn = partial(self.query_model, model=model, temperature=temperature, **kwargs)
+        else:
+            def fn(data: Any):
+                preprocessed = preprocess_fn(data)
+                return self.query_model(
+                                        query=preprocessed,
+                    model=model,
+                    temperature=temperature,
+                    **kwargs
+                )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=parallelism) as executor:
+            results = executor.map(fn, data)
+
+        return list(results)
+
 
     def  create_embeddings(
             self, data: List[str],
