@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Any, Iterable, cast, Dict, Set
+from typing import List, Any, Iterable, cast, Dict, Set, Tuple
 
 from jinja2 import Template
 from pydantic import BaseModel
 from aisyng.base.models.graph import GraphNode, ScoredGraphElement, GraphElement, GraphElementTypes
-from aisyng.base.models.payload import DirectSimilarityTopicSolverBase
+from aisyng.base.models.payload import DirectSimilarityTopicSolverBase, AnswerWithReferencesFromNodes
 from aisyng.base.utils import strftime_ymd
 from aisyng.wawr.models.graph import WAWRGraphElementTypes
+from aisyng.base.context import AppContext
 
 
 def node_to_reference_prompt_part(node: GraphNode, index: int) -> str:
@@ -65,11 +66,8 @@ class TopicReference(BaseModel):
 
         )
 
-class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
-    type_id: str = GraphElementTypes.TopicSolver
-
-    def __init__(self, **data: Any):
-        data["prompt_template"] = ("This is a set of reference extracts from research papers, ordered by date:\n"
+class WAWRAnswerWithReferencesFromNodes(AnswerWithReferencesFromNodes):
+    prompt_template: str = ("This is a set of reference extracts from research papers, ordered by date:\n"
                                    "{{ references_as_text }}\n\n"
                                    "Based on the knowledge from the references above, infer an answer as complete as "
                                    "possible to the following ask: "
@@ -90,11 +88,31 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
                                    f"Do not write references or bibliography at the end. "
                                    f"Do not write references, only insert indexes towards given references."
                                    )
+    def nodes_to_references_prompt_part(self, **kwargs):
+        return nodes_to_reference_prompt_part(self.nodes)
+
+    def get_prompt(self):
+        return Template(self.prompt_template).render(
+            references_as_text=self.nodes_to_references_prompt_part(),
+            question=self.ask
+        )
+
+class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
+    type_id: str = GraphElementTypes.TopicSolver
+
+    def __init__(self, **data: Any):
         data["solver_type"] = "direct_similarity"
         super().__init__(**data)
 
-    def nodes_to_references_prompt_part(self, nodes: List[GraphNode]):
-        return nodes_to_reference_prompt_part(nodes)
+
+    def create_final_answer(self, context: AppContext,ask: str, **kwargs) -> Tuple[str, Any]:
+        worker = WAWRAnswerWithReferencesFromNodes(
+            context=context,
+            llm_name=self.llm_name,
+            nodes=self.reference_nodes,
+            ask=ask
+        )
+        return worker.get_answer(**kwargs)
 
     def refine_search(self, matched_nodes: List[GraphNode]) -> List[List[GraphElement]]:
         return self._context.persistence.get_paths_between(
@@ -132,17 +150,7 @@ class DirectSimilarityTopicSolver(DirectSimilarityTopicSolverBase):
             else:
                 facts.add(d['facts'][0])
         return list(facts) + list(abstracts)
-        """return cast(
-            List[GraphNode]
-,            [element for element in graph_elements if element.type_id == WAWRGraphElementTypes.Abstract]
-        )"""
 
-    def query_model(self, question: str, references: str, **kwargs) -> str:
-        prompt = Template(self.prompt_template).render(
-            question=question,
-            references_as_text=references
-        )
-        llm_provider = self._context.llm_providers.get_by_model_name(self.llm_name)
-        response, usage = llm_provider.query_model(query=prompt, model=self.llm_name)
-        return response
+
+
 

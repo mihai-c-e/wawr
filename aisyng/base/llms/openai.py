@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import concurrent.futures
+import time
 from functools import partial
-from typing import List, Tuple, Any, Optional, Callable
+from typing import List, Tuple, Any, Optional, Callable, Dict
 from openai import OpenAI
 from openai._types import NotGiven, NOT_GIVEN
 from aisyng.base.llms.base import LLMProvider, InappropriateContentException, LLMName
+from aisyng.utils import read_json
 
 client = OpenAI(
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -36,21 +39,48 @@ class OpenAIProvider(LLMProvider):
         logging.info("Response received")
         return chat_completion.choices[0].message.content, chat_completion
 
+    def query_model_validate_json(
+            self,
+            query: str,
+            model: str,
+            temperature: float=0.1,
+            retries: int = 10,
+            **kwargs
+    ) -> Tuple[Dict[str, Any], Any]:
+        attempts = 1
+        while attempts <= retries:
+            try:
+                result = self.query_model(query=query, model=model, temperature=temperature, **kwargs)
+                result_json = read_json(result[0])
+                return result_json, result[1]
+            except Exception as ex:
+                logging.info("Querying model for json raised exception")
+                logging.exception(ex)
+                if attempts == retries:
+                    raise
+                time.sleep(2)
+                attempts += 1
+
+
+
     def query_model_threaded(
             self,
             data: List[Any],
             preprocess_fn: Optional[Callable[[Any], Any]] = None,
             model: LLMName = LLMName.OPENAI_GPT_35_TURBO,
             temperature: float = 0.1,
-                        parallelism: int=50,
+            parallelism: int=50,
+            json: bool = False,
+            retries: int = 5,
             **kwargs
     ) -> List[Any]:
+        query_model_fn = partial(self.query_model_validate_json, retries=retries) if json else self.query_model
         if preprocess_fn is None:
-            fn = partial(self.query_model, model=model, temperature=temperature, **kwargs)
+            fn = partial(query_model_fn, model=model, temperature=temperature, **kwargs)
         else:
             def fn(data: Any):
                 preprocessed = preprocess_fn(data)
-                return self.query_model(
+                return query_model_fn(
                                         query=preprocessed,
                     model=model,
                     temperature=temperature,

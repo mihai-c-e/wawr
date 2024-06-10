@@ -23,7 +23,7 @@ def perform_embedding(max_count: int, batch_size: int, embedder: Embedder):
 
         logging.info(f"Batch {i} - {i+batch_size} of {len(nodes)}")
         nodes_batch = nodes[i:i+batch_size]
-        data = [n.text for n in nodes_batch]
+        data = [n.text if n.text != '' else 'none' for n in nodes_batch]
 
         logging.info("Creating embeddings")
         embeddings = embedder.create_embeddings(data=data)
@@ -45,7 +45,7 @@ def perform_embedding(max_count: int, batch_size: int, embedder: Embedder):
 
 if __name__ == '__main__':
 
-    logging.basicConfig(level=logging.INFO)
+    logging.getLogger().setLevel(level=logging.INFO)
     embedder: Embedder = wawr_context.get_embedding_pool().get_embedder(embedding_key="text-embedding-3-small-128")
-    perform_embedding(200000, 2000, embedder=embedder)
+    perform_embedding(300000, 2000, embedder=embedder)
     logging.info("Embedding calculation done, exiting...")

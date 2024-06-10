@@ -17,16 +17,28 @@ class InappropriateContentException(Exception):
 
 class LLMName(str, Enum):
     OPENAI_GPT_4_TURBO = "gpt-4-turbo"
+    OPENAI_GPT_4o = "gpt-4o"
     OPENAI_GPT_35_TURBO = "gpt-3.5-turbo"
 
 llm_provider_mapping = {
     LLMName.OPENAI_GPT_4_TURBO: 'openai',
+    LLMName.OPENAI_GPT_4o: 'openai',
     LLMName.OPENAI_GPT_35_TURBO: "openai"
 }
 
 
 class LLMProvider:
     def query_model(self, query: str, model: str, temperature: float=0.1, **kwargs) -> Tuple[str, Any]:
+        raise NotImplementedError()
+
+    def query_model_validate_json(
+            self,
+            query: str,
+            model: str,
+            temperature: float=0.1,
+            retries: int = 10,
+            **kwargs
+    ) -> Tuple[Dict[str, Any], Any]:
         raise NotImplementedError()
 
     def  create_embeddings(
@@ -48,6 +60,8 @@ class LLMProvider:
             preprocess_fn: Optional[Callable[[Any], Any]] = None,
             model: str = LLMName.OPENAI_GPT_35_TURBO,
             temperature: float = 0.1,
+            json: bool = False,
+            retries: int = 5,
             **kwargs
     ) -> List[Any]:
         raise NotImplementedError

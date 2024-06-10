@@ -15,3 +15,4 @@ pgvector
 python-dotenv==1.0.1
 sqlalchemy
 mistralai
+tenacity

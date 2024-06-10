@@ -53,14 +53,6 @@ class GraphElement(BaseModel):
     def validate_source_id(cls, v: Any) -> str:
         return None if v is None else str(v)
 
-    """@model_validator(mode='after')
-    def check_passwords_match(self) -> Self:
-        pw1 = self.password1
-        pw2 = self.password2
-        if pw1 is not None and pw2 is not None and pw1 != pw2:
-            raise ValueError('passwords do not match')
-        return self"""
-
     def __init__(self, **kwargs):
         super().__init__(
             type_id=kwargs.pop("type_id", type(self).__name__),

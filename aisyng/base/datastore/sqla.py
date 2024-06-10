@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Callable, Any, Set, TypeVar
+from typing import List, Callable, Any, Set, TypeVar, cast, Tuple
 
-from sqlalchemy import ForeignKey, Engine, select
+from sqlalchemy import ForeignKey, Engine, select, true
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -194,3 +194,52 @@ class SQLAPersistenceInterface(PersistenceInterface):
         obj.node_id = element.id
         obj.embedding = element.embeddings[embedder.name]
         return obj
+
+    def get_nodes(
+            self,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            type_ids: List[str] = None,
+            **kwargs
+    ) -> List[GraphNode]:
+        query = select(SQLAElement).where(
+            (true() if from_date is None else SQLAElement.date>= from_date) &
+            (true() if to_date is None else SQLAElement.date < to_date) &
+            (true() if type_ids is None else SQLAElement.type_id.in_(type_ids))
+        ).order_by(SQLAElement.date.asc())
+        with self.session_factory() as sess:
+            raw_results = sess.execute(query).all()
+            return cast(
+                List[GraphNode],
+                [self.sql_to_element(r[0]) for r in raw_results]
+            )
+
+    def get_nodes_with_embeddings(
+            self,
+            embeddings_table: SQLABase,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            type_ids: List[str] = None,
+            **kwargs
+    ) -> List[Tuple[GraphNode, List[float]]]:
+        query = select(SQLAElement, embeddings_table.embedding).where(
+            (SQLAElement.id == embeddings_table.node_id) &
+            (true() if from_date is None else SQLAElement.date>= from_date) &
+            (true() if to_date is None else SQLAElement.date < to_date) &
+            (true() if type_ids is None else SQLAElement.type_id.in_(type_ids))
+        ).order_by(SQLAElement.date.asc())
+        with self.session_factory() as sess:
+            raw_results = sess.execute(query).all()
+            return cast(
+                List[Tuple[GraphNode, List[float]]],
+                [ (self.sql_to_element(r[0]), r[1]) for r in raw_results]
+            )
+
+    def group_nodes_by_similarity(
+            self,
+            from_date: datetime = None,
+            to_date: datetime = None,
+            type_ids: List[str] = None,
+            **kwargs
+    ) -> List[GraphNode]:
+        raise NotImplementedError()

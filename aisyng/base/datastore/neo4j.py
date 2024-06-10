@@ -6,6 +6,7 @@ import os
 from typing import List, Any, Set, Dict
 from neo4j import GraphDatabase, ManagedTransaction
 from neo4j.graph import Node, Relationship, Path, Entity
+from neo4j.exceptions import ConstraintError, ClientError
 
 from aisyng.base.datastore.base import PersistenceInterface
 from aisyng.base.models.graph import GraphElement, GraphNode, GraphRelationship
@@ -51,7 +52,14 @@ class Neo4JPersistenceInterface(PersistenceInterface):
         constraints = ([self._create_node_unique_constraint_query(t) for t in node_types] +
                 [self._create_relationship_unique_constraint_query(t) for t in rel_types])
         for c in constraints:
-            tx.run(c)
+            try:
+                tx.run(c)
+            except ClientError as cex:
+                logging.exception(cex)
+                if 'Neo.ClientError.Schema.ConstraintAlreadyExists' in cex.code:
+                    logging.error("Constraint already exists, with a different name. Continuing...")
+                else:
+                    raise
         logging.info(f"Key constraints created")
 
 

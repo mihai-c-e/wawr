@@ -10,16 +10,18 @@ import traceback
 
 
 from dotenv import load_dotenv
-from aisyng.base.models import GraphNode, GraphRelationship, GraphElement
+from aisyng.base.models.graph import GraphNode, GraphRelationship, GraphElement
 
 load_dotenv('../../../wawr_ingestion.env')
 
 
 from aisyng.utils import read_json
 from aisyng.wawr.context import WAWRContext
-from aisyng.wawr.models import Fact, GraphElementTypes
+from aisyng.wawr.models.graph import Fact
+from aisyng.wawr.models.graph import WAWRGraphElementTypes
 from aisyng.wawr.scripts._fact_extraction_prompts import fact_extraction_prompt_1
-from base.llms.openai_models import query_model
+from aisyng.base.llms.base import LLMName
+# from base.llms.openai_models import query_model
 
 
 sql_lock = threading.Lock()
@@ -30,7 +32,7 @@ errors = list()
 
 
 
-def _get_model_response(abstract_node: GraphNode, model: str, max_attempts: int = 5) -> List[Fact]:
+def _get_model_response(abstract_node: GraphNode, model_name: LLMName, max_attempts: int = 5) -> List[Fact]:
     logging.info(f"Extracting facts for abstract node {abstract_node.id}/{abstract_node.title}")
     template = Template(fact_extraction_prompt_1)
     text = (abstract_node.text.replace("\"", "").replace("'", "").
@@ -40,7 +42,9 @@ def _get_model_response(abstract_node: GraphNode, model: str, max_attempts: int 
     attempt = 1
     while True:
         try:
-            response, completion = query_model(query, model=model)
+            response, completion = (wawr_context.llm_providers.
+                                    get_by_model_name(model_name=model_name).
+                                    query_model(query, model=model_name))
             response = response.replace("\\", "")
             with openai_api_lock:
                 for k, v in dict(completion.usage).items():
@@ -75,7 +79,7 @@ def _extracted_object_to_nodes_and_relationship(
         text=fact_obj.text,
         date=fact_obj.date,
         meta=fact_obj,
-        type_id=GraphElementTypes.Fact,
+        type_id=WAWRGraphElementTypes.Fact,
         status='',
         source_id=abstract_node.id,
         citation=fact_obj.citation,
@@ -87,32 +91,32 @@ def _extracted_object_to_nodes_and_relationship(
     relationships.append(GraphRelationship(
         from_node=fact_node,
         to_node=abstract_node,
-        text=GraphElementTypes.IsExtractedFrom,
-        type_id=GraphElementTypes.IsExtractedFrom
+        text=WAWRGraphElementTypes.IsExtractedFrom,
+        type_id=WAWRGraphElementTypes.IsExtractedFrom
     ))
     # Add the fact type node
     fact_type_node = GraphNode(
         id=f"fact_type:{fact_obj.type}",
         text=fact_obj.type,
-        type_id=GraphElementTypes.FactType
+        type_id=WAWRGraphElementTypes.FactType
     )
     nodes[("", fact_type_node.id)] = fact_type_node
     # Add the is_a relationship between fact type node and fact node
     relationships.append(GraphRelationship(
         from_node=fact_node,
         to_node=fact_type_node,
-        text=GraphElementTypes.IsA,
-        type_id=GraphElementTypes.IsA
+        text=WAWRGraphElementTypes.IsA,
+        type_id=WAWRGraphElementTypes.IsA
     ))
 
-def _extract_from_one(abstract_node: GraphNode, model: str) -> List[GraphElement]:
+def _extract_from_one(abstract_node: GraphNode, model_name: LLMName) -> List[GraphElement]:
     global errors
     logging.info(f"Extracting facts from {abstract_node.id}")
     try:
         global openai_api_lock
         global sql_lock
         global openai_api_usage
-        extracted_objects = _get_model_response(abstract_node, max_attempts=5, model=model)
+        extracted_objects = _get_model_response(abstract_node, max_attempts=5, model_name=model_name)
         nodes = dict()
         relationships = list()
 
@@ -138,9 +142,9 @@ def _extract_from_one(abstract_node: GraphNode, model: str) -> List[GraphElement
         errors.append(error_info)
         raise
 
-def perform_extraction( model: str, max_count: int = 20, pool_size: int = 1, batch_size: int=100):
+def perform_extraction( model_name: LLMName, max_count: int = 20, pool_size: int = 1, batch_size: int=100):
     abstracts = wawr_context.get_persistence().get_abstracts_without_facts(max_count)
-    extract_from_one_partial = partial(_extract_from_one, model=model)
+    extract_from_one_partial = partial(_extract_from_one, model_name=model_name)
     pool = ThreadPool(pool_size)
     for i in range(0, len(abstracts), batch_size):
         results: List[List[GraphElement]] = pool.map(extract_from_one_partial, abstracts[i:i+batch_size])
@@ -153,11 +157,11 @@ def perform_extraction( model: str, max_count: int = 20, pool_size: int = 1, bat
     pool.join()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.getLogger().setLevel(level=logging.INFO)
 
     # model="gpt-4-0125-preview"
-    model = "gpt-3.5-turbo-16k"
-    perform_extraction(model=model, max_count=25000, pool_size=50 )
+    model_name = LLMName.OPENAI_GPT_35_TURBO
+    perform_extraction(model_name=model_name, max_count=25000, pool_size=50 )
     logging.info(f"{len(errors)} errors")
     if len(errors) > 0:
         with open("errors.txt", "w") as file:

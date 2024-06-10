@@ -173,3 +173,4 @@ class WAWRPersistence(MultiMediaPersist):
             max_hops=max_hops,
             **kwargs
         )
+
